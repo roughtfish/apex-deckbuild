@@ -184,9 +184,9 @@
             <div class="small" id="tyreSmall">Pushing corners makes Worn cards that clog your deck.</div>
           </div>
         </div>
-        <div class="tyre" id="dmgRow" style="display:none">
-          <div class="tyre-vis" id="dmgVis" style="border-color:var(--push)">0</div>
-          <div class="tyre-txt"><div class="big">Damage</div><div class="small" id="dmgSmall">Bodywork hit — drags you back every sector until you box and repair.</div></div>
+        <div class="tyre" id="dmgRow">
+          <div class="tyre-vis" id="dmgVis" style="border-color:var(--soft)">0</div>
+          <div class="tyre-txt"><div class="big" id="dmgBig">No damage</div><div class="small" id="dmgSmall">Bodywork clean. Risky cards and The Dipper can hurt you.</div></div>
         </div>
       </div>
     </div>
@@ -214,7 +214,7 @@
 
 const CARD={
   throttle:{name:'Throttle',cost:1,kind:'speed',text:'+2 speed.'},
-  slipstream:{name:'Slipstream',cost:1,kind:'speed',text:'+2 speed, +5 instead if a rival is within reach ahead.'},
+  slipstream:{name:'Slipstream',cost:1,kind:'speed',text:'+2 speed. On a straight with a rival in reach ahead: +5 (the tow). No tow in corners.'},
   sendit:{name:'Send It',cost:1,kind:'speed',text:'+4 speed. Eats tyres past a corner grip limit.'},
   trailbrake:{name:'Trail Brake',cost:1,kind:'grip',text:'Grip limit +3 this corner.'},
   liftcoast:{name:'Lift & Coast',cost:0,kind:'manage',text:'Bin a Worn from hand. +1 energy.'},
@@ -234,7 +234,7 @@ const CARD={
   flatcrest:{name:'Flat Over Crest',cost:2,kind:'speed',text:'+7 speed. Make 3 Worn unless you played Pacenotes this race.'},
   allsurface:{name:'All-Surface',cost:1,kind:'power',text:'POWER: ignore loose penalty, +2 speed on every loose sector.'},
   // F1
-  overtake:{name:'Overtake Mode',cost:1,kind:'boost',text:'+5 and pass if a rival is within reach ahead, else +2.'},
+  overtake:{name:'Overtake Mode',cost:1,kind:'boost',text:'On a straight with a rival in reach ahead: +5 and pass. Else +2.'},
   activeaero:{name:'Active Aero',cost:1,kind:'speed',text:'+5 on a straight, +1 in a corner (low-drag mode).'},
   boost:{name:'Boost Mode',cost:1,kind:'boost',text:'+4 speed, deploy anywhere.'},
   cleanair:{name:'Clean Air',cost:1,kind:'speed',text:'+6 if no rival within reach ahead, else +1 (hates traffic).'},
@@ -252,7 +252,7 @@ const CARD={
   divebomb:{name:'Dive Bomb',cost:2,kind:'boost',text:'Corner: +6, pass a rival, make 2 Worn.'},
   ballast:{name:'Success Ballast',cost:0,kind:'power',text:'POWER: +3 each sector while NOT leading; nothing while you lead.'},
   // NASCAR
-  bumpdraft:{name:'Bump Draft',cost:1,kind:'boost',text:'Rival ahead → +4 and draw. Else +2.'},
+  bumpdraft:{name:'Bump Draft',cost:1,kind:'boost',text:'On a straight with a rival in reach ahead: +4 and draw. Else +2.'},
   sidedraft:{name:'Side-Draft',cost:1,kind:'speed',text:'Straight + rival ahead: +4 and they lose 3. Else +2.'},
   highline:{name:'Run the High Line',cost:1,kind:'grip',text:'Corner: +5, no wear. Straight: +3.'},
   packracing:{name:'Pack Racing',cost:1,kind:'speed',text:'+2 speed for each rival within reach.'},
@@ -295,6 +295,7 @@ const DECKS={
 
 const LAPS=2;
 const GAP_SCALE=0.35; // converts abstract distance units into seconds of interval
+const REACH=6;        // "in reach ahead": a rival this many distance-units ahead or closer (~2.1s on the tower)
 // Mount Panorama, Bathurst — 6.2 km, all tarmac. Grip values reflect each corner's character:
 // low grip = tight/technical/easy to overdrive; straights carry the long flat-out sections.
 const BATHURST=[
@@ -359,7 +360,7 @@ function drawOne(){
 }
 function makeWorn(n){for(let i=0;i<n;i++)G.discard.push({key:'worn',name:'Worn Tyre',cost:0,worn:true,kind:'worn',text:'Dead weight. Bin it at the pits or with Lift & Coast.',uid:'worn'+Math.random()});}
 function curSector(){return G.track[G.sec];}
-function rivalAhead(){return G.rivals.some(r=>r.dist>G.player && r.dist-G.player<=6);}
+function rivalAhead(){return G.rivals.some(r=>r.dist>G.player && r.dist-G.player<=REACH);}
 function notLeading(){return G.rivals.some(r=>r.dist>G.player);}
 function passNearestAhead(){
   const ahead=G.rivals.filter(r=>r.dist>G.player).sort((a,b)=>a.dist-b.dist)[0];
@@ -367,7 +368,7 @@ function passNearestAhead(){
   log('Nobody ahead to pass — clear track.','');return false;
 }
 function pushPower(n){if(!G.activePowers.includes(n))G.activePowers.push(n);}
-function rivalsReachCount(){return G.rivals.filter(r=>r.dist>G.player && r.dist-G.player<=6).length;}
+function rivalsReachCount(){return G.rivals.filter(r=>r.dist>G.player && r.dist-G.player<=REACH).length;}
 function myPosition(){return G.rivals.filter(r=>r.dist>G.player).length+1;}
 function reduceNearestAhead(n){const a=G.rivals.filter(r=>r.dist>G.player).sort((x,y)=>x.dist-y.dist)[0];if(a){a.dist=Math.max(G.player,a.dist-n);return true;}return false;}
 function removeWorn(n){let c=0;const strip=z=>{for(let i=z.length-1;i>=0&&c<n;i--){if(z[i].worn){z.splice(i,1);c++;}}};strip(G.discard);strip(G.draw);strip(G.hand);return c;}
@@ -385,7 +386,7 @@ function playCard(uid){
 
   switch(c.key){
     case 'throttle': G.secSpeed+=2; log('Throttle → +2.',''); break;
-    case 'slipstream':{const b=rivalAhead()?5:2;G.secSpeed+=b;log('Slipstream → +'+b+(b===5?' (in the tow)':'')+'.',b===5?'good':'');break;}
+    case 'slipstream':{const tow=rivalAhead()&&s.type==='straight';const b=tow?5:2;G.secSpeed+=b;log('Slipstream → +'+b+(tow?' (in the tow)':(rivalAhead()?' (no tow — dirty air mid-corner)':''))+'.',tow?'good':'');break;}
     case 'sendit': G.secSpeed+=4; log('Send It → +4.',''); break;
     case 'trailbrake': G.gripBonus+=3; log('Trail brake — grip limit +3.','good'); break;
     case 'liftcoast':{G.energy+=1;const w=G.hand.findIndex(x=>x.worn&&x.uid!==uid);if(w>=0){G.hand.splice(w,1);log('Lift & coast — binned a Worn.','good');}else log('Lift & coast — no Worn to bin, kept +1 energy.','');break;}
@@ -424,7 +425,7 @@ function playCard(uid){
       break;
     case 'allsurface': G.powers.allSurface=true; if(!G.activePowers.includes('All-Surface'))G.activePowers.push('All-Surface'); log('POWER: All-Surface — loose sectors now boost you.','good'); toDiscard=false; break;
     // F1
-    case 'overtake':{const b=rivalAhead()?5:2;G.secSpeed+=b;log('Overtake Mode → +'+b+'.',b===5?'good':'');if(b===5)passNearestAhead();break;}
+    case 'overtake':{const tow=rivalAhead()&&s.type==='straight';const b=tow?5:2;G.secSpeed+=b;log('Overtake Mode → +'+b+(tow?'':(rivalAhead()?' (no benefit mid-corner)':''))+'.',tow?'good':'');if(tow)passNearestAhead();break;}
     case 'activeaero':{const b=corner?1:5;G.secSpeed+=b;log('Active Aero ('+(corner?'corner':'straight')+') → +'+b+'.','');break;}
     case 'boost': G.secSpeed+=4; log('Boost Mode → +4.','good'); break;
     case 'cleanair':{const b=rivalAhead()?1:6;G.secSpeed+=b;log('Clean Air → +'+b+(b===6?' (clear track)':' (stuck in traffic)')+'.',b===6?'good':'push');break;}
@@ -442,7 +443,7 @@ function playCard(uid){
     case 'divebomb':{G.secSpeed+=6;makeWorn(2);const ok=passNearestAhead();log('Dive bomb → +6, <span class="push">2× Worn</span>'+(ok?', pass made.':'.'),'push');break;}
     case 'ballast': G.powers.ballast=true; pushPower('Success Ballast'); log('POWER: Success Ballast — you fight harder from behind.','good'); toDiscard=false; break;
     // NASCAR
-    case 'bumpdraft':{if(rivalAhead()){G.secSpeed+=4;drawOne();log('Bump draft → +4 and drew a card.','good');}else{G.secSpeed+=2;log('Bump draft → +2.','');}break;}
+    case 'bumpdraft':{if(rivalAhead()&&s.type==='straight'){G.secSpeed+=4;drawOne();log('Bump draft → +4 and drew a card.','good');}else{G.secSpeed+=2;log('Bump draft → +2'+(rivalAhead()?' (no push — mid-corner)':'')+'.','');}break;}
     case 'sidedraft':{if(!corner&&rivalAhead()){G.secSpeed+=4;reduceNearestAhead(3);log('Side-draft → +4, took their air (−3 to them).','good');}else{G.secSpeed+=2;log('Side-draft → +2.','');}break;}
     case 'highline':{if(corner){G.secSpeed+=5;G.gripBonus+=5;log('High line → +5, no wear.','good');}else{G.secSpeed+=3;log('High line → +3.','');}break;}
     case 'packracing':{const n=rivalsReachCount();G.secSpeed+=2*n;log('Pack racing → +'+(2*n)+' ('+n+' in reach).',n>0?'good':'');break;}
@@ -618,9 +619,12 @@ function render(){
   document.getElementById('tyreBig').textContent=big;
   document.getElementById('tyreSmall').textContent=wornAll+' Worn card'+(wornAll===1?'':'s')+' jamming your deck.';
 
-  const dmgRow=document.getElementById('dmgRow');
-  if(G.damage>0){dmgRow.style.display='flex';document.getElementById('dmgVis').textContent=G.damage;}
-  else dmgRow.style.display='none';
+  const dv=document.getElementById('dmgVis');
+  dv.textContent=G.damage;
+  const cs=getComputedStyle(document.documentElement);
+  dv.style.borderColor = G.damage===0?cs.getPropertyValue('--soft'):(G.damage<6?cs.getPropertyValue('--med'):cs.getPropertyValue('--hard'));
+  document.getElementById('dmgBig').textContent = G.damage===0?'No damage':'Damaged';
+  document.getElementById('dmgSmall').textContent = G.damage===0?'Bodywork clean. Risky cards and The Dipper can hurt you.':'Dragging −'+G.damage+' every sector until you box and repair.';
   document.getElementById('pitBtn').textContent=G.damage>0?'Box · repair (−9)':'Box · tyres (−5)';
 
   const en=document.getElementById('energy');en.innerHTML='';
