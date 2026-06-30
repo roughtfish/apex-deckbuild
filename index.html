@@ -532,7 +532,7 @@ function moveRivals(){
 }
 
 function pit(){
-  if(!curSector().pit){log('Pit lane closed — you can only box on the start/finish straight.','push');render();return;}
+  if(!curSector().pit || G.sec===0){log('Pit lane closed — you can only box passing the pits, and not off the start line.','push');render();return;}
   const purge=z=>z.filter(c=>!c.worn);
   G.draw=purge(G.draw);G.discard=purge(G.discard);G.hand=purge(G.hand);
   const repairing=G.damage>0;
@@ -628,7 +628,7 @@ function render(){
   dv.style.borderColor = G.damage===0?cs.getPropertyValue('--soft'):(G.damage<6?cs.getPropertyValue('--med'):cs.getPropertyValue('--hard'));
   document.getElementById('dmgBig').textContent = G.damage===0?'No damage':'Damaged';
   document.getElementById('dmgSmall').textContent = G.damage===0?'Bodywork clean. Risky cards and The Dipper can hurt you.':'Losing '+G.damage+' distance every sector (≈'+(G.damage*GAP_SCALE).toFixed(2)+'s) until you box and repair.';
-  const atPit=curSector().pit, pitBtn=document.getElementById('pitBtn');
+  const atPit=curSector().pit && G.sec>0, pitBtn=document.getElementById('pitBtn');
   pitBtn.disabled=!atPit;
   pitBtn.textContent = !atPit ? 'Box · pit straight only' : (G.damage>0?'Box · repair (−9)':'Box · tyres (−5)');
 
