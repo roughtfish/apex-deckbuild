@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>APEX — faction asymmetry prototype</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;900&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0B0E11; --panel:#141A21; --panel2:#1B232C; --line:#2A333E;
+    --text:#E6EDF3; --muted:#7D8896;
+    --push:#FF453A;
+    --player:#00E5D1;
+    --f1:#E10600; --stock:#3D7DFF; --touring:#FFB000;
+    --indy:#B14CFF; --rally:#E8743B;
+    --soft:#34C759; --med:#FFB000; --hard:#FF453A;
+    --loose:#E8743B;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:"Archivo",system-ui,sans-serif;
+    -webkit-font-smoothing:antialiased;padding:18px;max-width:1000px;margin:0 auto}
+  .mono{font-family:"Roboto Mono",monospace}
+  h1{font-weight:900;font-size:26px;letter-spacing:-0.5px;margin:0;text-transform:uppercase}
+  h1 span{color:var(--player)}
+  .sub{color:var(--muted);font-size:12px;letter-spacing:2px;text-transform:uppercase;margin:2px 0 16px}
+  .grid{display:grid;grid-template-columns:1.1fr 1fr;gap:14px}
+  @media(max-width:760px){.grid{grid-template-columns:1fr}}
+  .card-panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px}
+  .label{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:10px}
+
+  /* faction select */
+  .picks{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+  @media(max-width:760px){.picks{grid-template-columns:1fr}}
+  .pick{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px;cursor:pointer;
+    transition:transform .12s,border-color .12s}
+  .pick:hover{transform:translateY(-4px)}
+  .pick h3{margin:0 0 4px;font-size:20px;font-weight:900;text-transform:uppercase;letter-spacing:-.5px}
+  .pick .tag{font-size:9px;letter-spacing:1.5px;text-transform:uppercase;padding:3px 7px;border-radius:4px;display:inline-block;margin-bottom:10px}
+  .pick p{font-size:12px;color:var(--muted);line-height:1.45;margin:0 0 10px}
+  .pick .feat{font-size:11px;color:var(--text);line-height:1.6;font-family:"Roboto Mono",monospace}
+
+  /* tower */
+  .row{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--line)}
+  .row:last-child{border-bottom:none}
+  .pos{width:22px;font-weight:900;text-align:center}
+  .chip{width:6px;height:26px;border-radius:2px;flex:0 0 auto}
+  .nm{flex:1;font-weight:700;font-size:14px}
+  .cls{font-size:9px;letter-spacing:1px;color:var(--muted);text-transform:uppercase}
+  .bar{height:6px;background:var(--panel2);border-radius:3px;overflow:hidden;margin-top:4px}
+  .bar>i{display:block;height:100%}
+  .dist{width:68px;text-align:right;font-size:13px}
+
+  .sector-big{display:flex;align-items:baseline;gap:10px;margin-bottom:4px;flex-wrap:wrap}
+  .sector-big b{font-size:26px;font-weight:900;letter-spacing:-1px}
+  .sector-type{font-size:11px;letter-spacing:2px;text-transform:uppercase;padding:3px 8px;border-radius:4px}
+  .t-straight{background:rgba(0,229,209,.12);color:var(--player)}
+  .t-corner{background:rgba(255,69,58,.12);color:var(--push)}
+  .t-loose{background:rgba(232,116,59,.15);color:var(--loose)}
+  .gaugewrap{display:flex;gap:18px;margin-top:12px;align-items:flex-end}
+  .gauge{flex:1}
+  .gauge .num{font-size:28px;font-weight:900;font-family:"Roboto Mono",monospace;line-height:1}
+  .gauge .cap{font-size:10px;letter-spacing:1px;color:var(--muted);text-transform:uppercase;margin-top:3px}
+  .limit{color:var(--push)}
+
+  .upcoming{display:flex;gap:8px;margin-top:12px}
+  .up{flex:1;background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:7px 8px}
+  .up .un{font-size:11px;font-weight:700}
+  .up .ut{font-size:9px;letter-spacing:.5px;text-transform:uppercase;color:var(--muted);margin-top:2px}
+  .up .dot{display:inline-block;width:6px;height:6px;border-radius:50%;margin-right:4px;vertical-align:middle}
+
+  .tyre{display:flex;align-items:center;gap:12px;margin-top:14px;padding-top:12px;border-top:1px solid var(--line)}
+  .tyre-vis{width:44px;height:44px;border-radius:50%;border:7px solid var(--soft);display:flex;align-items:center;
+    justify-content:center;font-weight:900;font-family:"Roboto Mono",monospace;font-size:14px;transition:border-color .3s}
+  .tyre-txt{flex:1}
+  .tyre-txt .big{font-size:13px;font-weight:700}
+  .tyre-txt .small{font-size:11px;color:var(--muted)}
+
+  .status{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+  .badge{font-size:10px;font-family:"Roboto Mono",monospace;padding:4px 8px;border-radius:5px;
+    background:var(--panel2);border:1px solid var(--line);letter-spacing:.5px}
+  .badge.pw{border-color:var(--player);color:var(--player)}
+  .badge.p2p{border-color:var(--indy);color:var(--indy)}
+
+  .energy{display:flex;gap:5px;align-items:center;margin-bottom:10px}
+  .pip{width:14px;height:14px;border-radius:50%;background:var(--panel2);border:1px solid var(--line)}
+  .pip.on{background:var(--player);border-color:var(--player);box-shadow:0 0 8px rgba(0,229,209,.5)}
+  .hand{display:flex;gap:8px;flex-wrap:wrap}
+  .pcard{width:114px;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:9px;
+    cursor:pointer;transition:transform .12s,border-color .12s;position:relative;user-select:none}
+  .pcard:hover{transform:translateY(-3px);border-color:var(--player)}
+  .pcard.dead,.pcard.unaffordable{opacity:.45;cursor:not-allowed}
+  .pcard.dead{border-style:dashed}
+  .pcard.dead:hover,.pcard.unaffordable:hover{transform:none;border-color:var(--line)}
+  .pcard .cost{position:absolute;top:6px;right:6px;width:18px;height:18px;border-radius:50%;background:var(--player);
+    color:#001;font-weight:900;font-size:11px;display:flex;align-items:center;justify-content:center;font-family:"Roboto Mono",monospace}
+  .pcard.wcard .cost{background:var(--push);color:#fff}
+  .pcard .cn{font-weight:900;font-size:12px;margin-bottom:5px;padding-right:18px;text-transform:uppercase;letter-spacing:.3px}
+  .pcard .ct{font-size:10px;color:var(--muted);line-height:1.35;min-height:50px}
+  .pcard .ico{font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--player)}
+  .wcard .ico{color:var(--push)}
+  .pcard.power-c .ico{color:var(--indy)}
+
+  .controls{display:flex;gap:10px;margin-top:14px}
+  button.act{flex:1;background:var(--player);color:#001;border:none;border-radius:8px;padding:13px;
+    font-family:"Archivo";font-weight:900;font-size:14px;text-transform:uppercase;letter-spacing:.5px;cursor:pointer}
+  button.act:hover{filter:brightness(1.1)}
+  button.pit{flex:0 0 auto;background:transparent;color:var(--push);border:1px solid var(--push)}
+  button.pit:hover{background:rgba(255,69,58,.1)}
+
+  .log{margin-top:14px;font-family:"Roboto Mono",monospace;font-size:11px;color:var(--muted);max-height:120px;overflow-y:auto;line-height:1.7}
+  .log b{color:var(--text)}
+  .log .push{color:var(--push)}
+  .log .good{color:var(--player)}
+  .log .loose{color:var(--loose)}
+
+  .deckinfo{display:flex;gap:16px;font-size:11px;color:var(--muted);margin-top:10px;font-family:"Roboto Mono",monospace}
+  .banner{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:24px;text-align:center;margin-top:14px}
+  .banner h2{font-size:40px;font-weight:900;margin:0 0 6px;letter-spacing:-1px}
+  .banner p{color:var(--muted);margin:0 0 16px}
+  .mapwrap{display:flex;justify-content:center;padding:4px 0}
+  svg.track{width:100%;max-width:300px;height:auto}
+  .tpath{fill:none;stroke:#2A333E;stroke-width:11;stroke-linejoin:round;stroke-linecap:round}
+  .tpath2{fill:none;stroke:#0E141A;stroke-width:5;stroke-linejoin:round;stroke-linecap:round}
+  .tick{fill:#46515F}
+  .hide{display:none}
+</style>
+</head>
+<body>
+  <h1>APEX<span>//</span>deckbuild</h1>
+  <div class="sub">mount panorama · bathurst — all tarmac · indycar vs rally vs gt3</div>
+
+  <!-- FACTION SELECT -->
+  <div id="select">
+    <div class="label">pick your category — then race the same three rivals on the same circuit</div>
+    <div class="picks" id="picks"></div>
+  </div>
+
+  <!-- GAME -->
+  <div id="game" class="hide">
+    <div class="card-panel" style="margin-bottom:14px">
+      <div class="label">circuit map — mount panorama, bathurst · cars live by gap</div>
+      <div class="mapwrap">
+        <svg class="track" viewBox="0 0 260 360" id="trackSvg">
+          <path id="trackPath" class="tpath" d="M 120 330 L 120 250 C 120 220 96 210 96 180 L 96 120 C 96 92 110 78 134 78 C 158 78 170 96 160 116 C 152 132 166 146 156 162 C 148 176 160 190 150 206 C 142 220 150 236 168 240 C 188 244 196 262 196 286 L 196 300 C 196 316 184 318 176 322 C 165 326 150 326 140 328 C 130 329 124 326 120 330 Z"/>
+          <path class="tpath2" d="M 120 330 L 120 250 C 120 220 96 210 96 180 L 96 120 C 96 92 110 78 134 78 C 158 78 170 96 160 116 C 152 132 166 146 156 162 C 148 176 160 190 150 206 C 142 220 150 236 168 240 C 188 244 196 262 196 286 L 196 300 C 196 316 184 318 176 322 C 165 326 150 326 140 328 C 130 329 124 326 120 330 Z"/>
+          <g id="trackTicks"></g>
+          <circle id="sectorMarker" r="9" fill="none" stroke="#00E5D1" stroke-width="2" cx="0" cy="0"/>
+          <g id="cars"></g>
+        </svg>
+      </div>
+    </div>
+    <div class="grid">
+      <div class="card-panel">
+        <div class="label">live timing — lap <span id="lapNo" class="mono">1</span>/<span id="lapTot" class="mono">3</span> · sector <span id="secNo" class="mono">1</span>/<span id="secTot" class="mono">18</span></div>
+        <div id="tower"></div>
+        <div class="deckinfo">
+          <span>DECK <b id="deckCt" class="mono" style="color:var(--text)">0</b></span>
+          <span>DISCARD <b id="discCt" class="mono" style="color:var(--text)">0</b></span>
+          <span>WORN <b id="wornCt" class="mono" style="color:var(--push)">0</b></span>
+        </div>
+        <div class="status" id="status"></div>
+      </div>
+
+      <div class="card-panel">
+        <div class="label">current sector</div>
+        <div class="sector-big">
+          <b id="secName">T1</b>
+          <span id="secType" class="sector-type t-corner">corner</span>
+          <span id="secSurf" class="sector-type t-loose hide">loose</span>
+        </div>
+        <div id="secDesc" style="font-size:12px;color:var(--muted)">—</div>
+        <div class="gaugewrap">
+          <div class="gauge"><div class="num" style="color:var(--player)" id="gSpeed">0</div><div class="cap">speed banked</div></div>
+          <div class="gauge"><div class="num limit" id="gLimit">—</div><div class="cap">grip limit</div></div>
+          <div class="gauge"><div class="num" id="gOver" style="color:var(--push)">0</div><div class="cap">over → wear</div></div>
+        </div>
+        <div class="upcoming" id="upcoming"></div>
+        <div class="tyre">
+          <div class="tyre-vis" id="tyreVis">OK</div>
+          <div class="tyre-txt">
+            <div class="big" id="tyreBig">Tyres fresh</div>
+            <div class="small" id="tyreSmall">Pushing corners makes Worn cards that clog your deck.</div>
+          </div>
+        </div>
+        <div class="tyre" id="dmgRow" style="display:none">
+          <div class="tyre-vis" id="dmgVis" style="border-color:var(--push)">0</div>
+          <div class="tyre-txt"><div class="big">Damage</div><div class="small" id="dmgSmall">Bodywork hit — drags you back every sector until you box and repair.</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card-panel" style="margin-top:14px" id="handPanel">
+      <div class="label">your hand · <span id="enLabel">3</span> energy</div>
+      <div class="energy" id="energy"></div>
+      <div class="hand" id="hand"></div>
+      <div class="controls">
+        <button class="act" id="endBtn">End sector ▸</button>
+        <button class="act pit" id="pitBtn">Box (−5 dist, clears wear)</button>
+      </div>
+      <div class="log" id="log"></div>
+    </div>
+  </div>
+
+  <div class="banner hide" id="banner">
+    <h2 id="bannerPos">P—</h2>
+    <p id="bannerTxt"></p>
+    <button class="act" id="againBtn" style="max-width:220px;margin:0 auto">Pick another faction ▸</button>
+  </div>
+
+<script>
+const CLASS_COL={GT3:'var(--player)',INDY:'var(--indy)',RALLY:'var(--rally)',F1:'var(--f1)',STOCK:'var(--stock)',TOURING:'var(--touring)'};
+
+const CARD={
+  throttle:{name:'Throttle',cost:1,kind:'speed',text:'+2 speed.'},
+  slipstream:{name:'Slipstream',cost:1,kind:'speed',text:'+2 speed, +5 instead if a rival is within reach ahead.'},
+  sendit:{name:'Send It',cost:1,kind:'speed',text:'+4 speed. Eats tyres past a corner grip limit.'},
+  trailbrake:{name:'Trail Brake',cost:1,kind:'grip',text:'Grip limit +3 this corner.'},
+  liftcoast:{name:'Lift & Coast',cost:0,kind:'manage',text:'Bin a Worn from hand. +1 energy.'},
+  defend:{name:'Defend',cost:1,kind:'def',text:'No rival passes you this sector.'},
+  lunge:{name:'Lunge',cost:1,kind:'boost',text:'+4 speed and dive past a rival ahead. Risk: contact → 3 damage.'},
+  // IndyCar
+  p2p:{name:'Push-to-Pass',cost:2,kind:'boost',text:'+6 speed and pass a rival. Limited charges per race.'},
+  hybrid:{name:'Hybrid Deploy',cost:1,kind:'boost',text:'+3 speed. Start next sector with +1 energy.'},
+  restart:{name:'Restart Master',cost:1,kind:'speed',text:'+5 speed if you are NOT leading (else +2).'},
+  reds:{name:'Firestone Reds',cost:1,kind:'speed',text:'+5 speed, make 2 Worn (soft alternate tyre).'},
+  versatile:{name:'Versatile Setup',cost:1,kind:'power',text:'POWER: ignore loose-surface penalty for the rest of the race.'},
+  // Rally
+  pacenotes:{name:'Pacenotes',cost:1,kind:'manage',text:'Draw 2. Makes your next Flat Over Crest safe.'},
+  flick:{name:'Scandinavian Flick',cost:1,kind:'grip',text:'LOOSE corner: +5, no wear. SMOOTH: +2 and make 2 Worn.'},
+  handbrake:{name:'Handbrake Turn',cost:1,kind:'boost',text:'Tight corner (grip ≤5): +5 and pass. Otherwise +2.'},
+  antilag:{name:'Anti-Lag',cost:0,kind:'boost',text:'+2 energy this sector. Make 1 Worn.'},
+  flatcrest:{name:'Flat Over Crest',cost:2,kind:'speed',text:'+7 speed. Make 3 Worn unless you played Pacenotes this race.'},
+  allsurface:{name:'All-Surface',cost:1,kind:'power',text:'POWER: ignore loose penalty, +2 speed on every loose sector.'},
+};
+
+const DECKS={
+  GT3:{name:'GT3',col:CLASS_COL.GT3,tag:'control',blurb:'The baseline. Steady racecraft and tyre management — but no answer for a loose surface except to grit your teeth through it.',
+    feat:'• Manage & reel them in late\n• Suffers on loose sectors',
+    cards:['throttle','throttle','throttle','throttle','throttle','slipstream','slipstream','sendit','sendit','trailbrake','liftcoast','lunge','defend']},
+  INDY:{name:'IndyCar',col:CLASS_COL.INDY,tag:'all-rounder',blurb:'The versatile boost deck. Finite Push-to-Pass charges give huge tempo swings, and a setup Power makes the surface irrelevant — but the boost runs out.',
+    feat:'• 5× Push-to-Pass charges\n• Versatile Setup negates surfaces',
+    cards:['throttle','throttle','throttle','throttle','slipstream','slipstream','p2p','p2p','hybrid','restart','reds','versatile','lunge','defend']},
+  RALLY:{name:'Rally',col:CLASS_COL.RALLY,tag:'surface specialist',blurb:'The read-and-gamble deck. Owns the loose sectors and reads the road with pacenotes — but its weapons backfire on smooth tarmac and can blow up its own deck.',
+    feat:'• Dominant on loose, weak on smooth\n• Gambles wear for raw pace',
+    cards:['throttle','throttle','throttle','throttle','pacenotes','flick','flick','handbrake','antilag','flatcrest','flatcrest','allsurface','lunge','defend']},
+};
+
+const LAPS=2;
+const GAP_SCALE=0.35; // converts abstract distance units into seconds of interval
+// Mount Panorama, Bathurst — 6.2 km, all tarmac. Grip values reflect each corner's character:
+// low grip = tight/technical/easy to overdrive; straights carry the long flat-out sections.
+const BATHURST=[
+  {name:'Pit Straight',type:'straight',base:3,surface:'smooth'},
+  {name:'Hell Corner',type:'corner',grip:5,surface:'smooth'},
+  {name:'Mountain Straight',type:'straight',base:4,surface:'smooth'},
+  {name:'Griffins Bend',type:'corner',grip:6,surface:'smooth'},
+  {name:'The Cutting',type:'corner',grip:4,surface:'smooth'},
+  {name:'Reid Park',type:'corner',grip:6,surface:'smooth'},
+  {name:'The Esses',type:'corner',grip:4,surface:'smooth'},
+  {name:'The Dipper',type:'corner',grip:4,surface:'smooth',hazard:true},
+  {name:"Forrest's Elbow",type:'corner',grip:5,surface:'smooth'},
+  {name:'Conrod Straight',type:'straight',base:6,surface:'smooth'},
+  {name:'The Chase',type:'corner',grip:6,surface:'smooth'},
+  {name:"Murray's Corner",type:'corner',grip:5,surface:'smooth'},
+];
+const SPL=BATHURST.length;
+function buildTrack(){
+  let t=[];
+  for(let l=0;l<LAPS;l++)t=t.concat(BATHURST.map(s=>({...s})));
+  return t.map((s,i)=>({...s,idx:i}));
+}
+
+let G;
+function startRace(fk){
+  const f=DECKS[fk];
+  const deck=f.cards.map((k,i)=>({key:k,...CARD[k],uid:i+'_'+k}));
+  G={
+    fk, fcol:f.col, deck, draw:shuffle([...deck]), hand:[], discard:[],
+    track:buildTrack(), sec:0,
+    energy:3, maxEnergy:3, pendingEnergy:0,
+    secSpeed:0, gripBonus:0, defend:false,
+    powers:{versatile:false, allSurface:false}, activePowers:[],
+    p2p: fk==='INDY'?5:0,
+    pacenotesPlayed:false,
+    player:0, damage:0,
+    rivals:[
+      {nm:'VERSTRAPP',cls:'F1',col:CLASS_COL.F1,dist:0,dmg:0,fragile:true},
+      {nm:'EARNHART',cls:'STOCK',col:CLASS_COL.STOCK,dist:0,dmg:0,fragile:false},
+      {nm:'SUTTON',cls:'TOURING',col:CLASS_COL.TOURING,dist:0,dmg:0,fragile:false},
+    ],
+    logLines:[]
+  };
+  // player tower colour follows faction
+  document.documentElement.style.setProperty('--player', f.col);
+  document.getElementById('select').classList.add('hide');
+  document.getElementById('banner').classList.add('hide');
+  document.getElementById('game').classList.remove('hide');
+  document.getElementById('handPanel').classList.remove('hide');
+  drawHand();
+  log('Lights out — you start P4 in the '+f.name+'.','');
+  if(fk==='RALLY'){
+    const looseCount=G.track.filter(s=>s.surface==='loose').length;
+    if(looseCount===0)log('All tarmac at the Mountain — your flicks will bite. Lean on the handbrake through the tight stuff and send it down Conrod.','push');
+    else log('Loose sectors ahead — this is your turf.','loose');
+  }
+  if(fk==='INDY')log('5 Push-to-Pass charges. Spend them well.','good');
+  render();
+}
+
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a}
+function drawHand(){G.hand=[];for(let i=0;i<5;i++)drawOne();}
+function drawOne(){
+  if(G.draw.length===0){if(G.discard.length===0)return;G.draw=shuffle([...G.discard]);G.discard=[];}
+  if(G.draw.length)G.hand.push(G.draw.pop());
+}
+function makeWorn(n){for(let i=0;i<n;i++)G.discard.push({key:'worn',name:'Worn Tyre',cost:0,worn:true,kind:'worn',text:'Dead weight. Bin it at the pits or with Lift & Coast.',uid:'worn'+Math.random()});}
+function curSector(){return G.track[G.sec];}
+function rivalAhead(){return G.rivals.some(r=>r.dist>G.player && r.dist-G.player<=6);}
+function notLeading(){return G.rivals.some(r=>r.dist>G.player);}
+function passNearestAhead(){
+  const ahead=G.rivals.filter(r=>r.dist>G.player).sort((a,b)=>a.dist-b.dist)[0];
+  if(ahead){G.player=ahead.dist+1;log('Passed '+ahead.nm+' ('+ahead.cls+').','good');return true;}
+  log('Nobody ahead to pass — clear track.','');return false;
+}
+
+function playCard(uid){
+  const i=G.hand.findIndex(c=>c.uid===uid);if(i<0)return;
+  const c=G.hand[i];
+  if(c.worn)return;
+  if(c.key==='p2p' && G.p2p<=0){log('No Push-to-Pass charges left.','push');return;}
+  if(c.cost>G.energy)return;
+  G.energy-=c.cost;
+  const s=curSector();
+  const loose=s.surface==='loose', corner=s.type==='corner';
+  let toDiscard=true;
+
+  switch(c.key){
+    case 'throttle': G.secSpeed+=2; log('Throttle → +2.',''); break;
+    case 'slipstream':{const b=rivalAhead()?5:2;G.secSpeed+=b;log('Slipstream → +'+b+(b===5?' (in the tow)':'')+'.',b===5?'good':'');break;}
+    case 'sendit': G.secSpeed+=4; log('Send It → +4.',''); break;
+    case 'trailbrake': G.gripBonus+=3; log('Trail brake — grip limit +3.','good'); break;
+    case 'liftcoast':{G.energy+=1;const w=G.hand.findIndex(x=>x.worn&&x.uid!==uid);if(w>=0){G.hand.splice(w,1);log('Lift & coast — binned a Worn.','good');}else log('Lift & coast — no Worn to bin, kept +1 energy.','');break;}
+    case 'defend': G.defend=true; log('Holding the line — defending.',''); break;
+    case 'lunge':{
+      G.secSpeed+=4;
+      const passed=passNearestAhead();
+      if(passed){
+        if(Math.random()<0.45){G.damage+=3;log('Lunge — <span class="push">CONTACT! +3 damage</span>, but the pass stuck.','push');}
+        else log('Lunge stuck — clean pass, no contact.','good');
+      }
+      break;
+    }
+    // indy
+    case 'p2p': G.p2p--; G.secSpeed+=6; log('PUSH-TO-PASS → +6 ('+G.p2p+' left).','good'); passNearestAhead(); break;
+    case 'hybrid': G.secSpeed+=3; G.pendingEnergy+=1; log('Hybrid deploy → +3, +1 energy next sector.','good'); break;
+    case 'restart':{const b=notLeading()?5:2;G.secSpeed+=b;log('Restart master → +'+b+'.',b===5?'good':'');break;}
+    case 'reds': G.secSpeed+=5; makeWorn(2); log('Firestone reds → +5, <span class="push">2× Worn</span>.',''); break;
+    case 'versatile': G.powers.versatile=true; if(!G.activePowers.includes('Versatile Setup'))G.activePowers.push('Versatile Setup'); log('POWER: Versatile Setup — surfaces no longer hurt you.','good'); toDiscard=false; break;
+    // rally
+    case 'pacenotes': drawOne();drawOne(); G.pacenotesPlayed=true; log('Pacenotes — read the road, drew 2.','good'); break;
+    case 'flick':
+      if(loose&&corner){G.secSpeed+=5;G.gripBonus+=5;log('Scandinavian flick on the loose → +5, no wear.','loose');}
+      else if(loose){G.secSpeed+=5;log('Flick → +5.','loose');}
+      else{G.secSpeed+=2;makeWorn(2);log('Flick on smooth tarmac — wrong surface → +2, <span class="push">2× Worn</span>.','push');}
+      break;
+    case 'handbrake':
+      if(corner&&s.grip<=5){G.secSpeed+=5;log('Handbrake turn → +5.','good');passNearestAhead();}
+      else{G.secSpeed+=2;log('Handbrake → +2 (not tight enough to rotate).','');}
+      break;
+    case 'antilag': G.energy+=2; makeWorn(1); log('Anti-lag — +2 energy, <span class="push">1× Worn</span>.',''); break;
+    case 'flatcrest':
+      G.secSpeed+=7;
+      if(!G.pacenotesPlayed){makeWorn(3);log('FLAT OVER CREST → +7, but blind — <span class="push">3× Worn</span>.','push');}
+      else log('FLAT OVER CREST → +7, called by pacenotes — clean.','good');
+      break;
+    case 'allsurface': G.powers.allSurface=true; if(!G.activePowers.includes('All-Surface'))G.activePowers.push('All-Surface'); log('POWER: All-Surface — loose sectors now boost you.','good'); toDiscard=false; break;
+  }
+  G.hand.splice(i,1);
+  if(toDiscard){c._played=true;G.discard.push(c);}
+  render();
+}
+
+function endSector(coastThrough=false){
+  const s=curSector();
+  const corner=s.type==='corner', loose=s.surface==='loose';
+  const limit=corner?s.grip+G.gripBonus:999;
+  let raw=G.secSpeed+(s.type==='straight'?s.base:0);
+
+  let penalty=0, bonus=0;
+  if(loose && !G.powers.versatile && !G.powers.allSurface) penalty=Math.min(raw,3);
+  if(loose && G.powers.allSurface) bonus=2;
+  let gained=raw-penalty+bonus;
+  if(coastThrough)gained=0;
+  let dmgDrag=0;
+  if(!coastThrough && G.damage>0){dmgDrag=Math.min(gained,G.damage);gained-=dmgDrag;}
+
+  const over=corner?Math.max(0,G.secSpeed-limit):0;
+  G.player+=gained;
+  if(over>0)makeWorn(over);
+
+  if(corner){
+    if(over>0)log('<b>'+s.name+'</b> ('+(loose?'loose ':'')+'corner): <span class="push">'+over+' over</span> grip → +'+gained+' dist, <span class="push">'+over+'× Worn</span>.','');
+    else log('<b>'+s.name+'</b> ('+(loose?'loose ':'')+'corner): clean → +'+gained+' dist.','good');
+  } else {
+    log('<b>'+s.name+'</b> (straight): +'+gained+' dist.','');
+  }
+  if(penalty>0)log('  ↳ loose surface cost you '+penalty+' — no setup for it.','loose');
+  if(bonus>0)log('  ↳ all-surface setup: +'+bonus+' on the rough.','loose');
+  if(dmgDrag>0)log('  ↳ damaged car dragging — lost '+dmgDrag+' this sector.','push');
+
+  // The Dipper grounds out fragile cars (the F1)
+  if(s.hazard){
+    G.rivals.forEach(rv=>{if(rv.fragile){rv.dmg+=3;log(rv.nm+' bottoms out over The Dipper — <span class="push">+3 damage</span> to the '+rv.cls+'.','push');}});
+  }
+
+  moveRivals();
+
+  G.hand.forEach(c=>{if(!c._played)G.discard.push(c)});
+  G.discard.forEach(c=>delete c._played);
+  G.secSpeed=0;G.gripBonus=0;G.defend=false;
+  G.sec++;
+  if(G.sec>=G.track.length)return finish();
+  G.energy=G.maxEnergy+G.pendingEnergy;G.pendingEnergy=0;
+  drawHand();
+  render();
+}
+
+function moveRivals(){
+  const progress=G.sec/G.track.length;
+  const s=curSector();
+  G.rivals.forEach(r=>{
+    let pace=5+Math.random()*2;
+    if(r.cls==='F1'){pace=8-progress*5+Math.random()*1.5;}
+    if(r.cls==='STOCK'){const near=[...G.rivals,{dist:G.player}].some(o=>o!==r&&Math.abs(o.dist-r.dist)<5);pace=5+(near?3:0)+Math.random()*1.5;}
+    if(r.cls==='TOURING'){pace=4.5+(s.type==='corner'?2:0)+Math.random()*1.2;}
+    // circuit rivals also struggle on loose
+    if(s.surface==='loose')pace-=2;
+    pace-=r.dmg*0.5;
+    const before=r.dist;
+    r.dist+=Math.max(0,pace);
+    if(G.defend && r.dist>G.player && before<G.player)r.dist=G.player-0.1;
+  });
+}
+
+function pit(){
+  const purge=z=>z.filter(c=>!c.worn);
+  G.draw=purge(G.draw);G.discard=purge(G.discard);G.hand=purge(G.hand);
+  const repairing=G.damage>0;
+  const cost=5+(repairing?4:0);
+  G.damage=0;
+  G.player-=cost;
+  log('<b>BOX BOX</b> — '+(repairing?'fresh tyres + repairs':'fresh tyres')+', dropped '+cost+' of track position.','push');
+  endSector(true);
+}
+
+function ranking(){
+  const all=[{nm:'YOU ('+DECKS[G.fk].name+')',cls:G.fk,col:G.fcol,dist:G.player,dmg:G.damage,you:true},...G.rivals];
+  return all.sort((a,b)=>b.dist-a.dist);
+}
+
+function finish(){
+  const r=ranking();const pos=r.findIndex(x=>x.you)+1;
+  document.getElementById('handPanel').classList.add('hide');
+  document.getElementById('game').classList.add('hide');
+  const b=document.getElementById('banner');b.classList.remove('hide');
+  document.getElementById('bannerPos').textContent='P'+pos;
+  document.getElementById('bannerPos').style.color=G.fcol;
+  const msgs={1:'Win. The '+DECKS[G.fk].name+' came good when it mattered.',2:'Podium — so close. A cleaner run and that\'s the win.',3:'Podium, just. The pack reeled you back late.',4:'Last. The deck filled with dead rubber.'};
+  document.getElementById('bannerTxt').textContent=msgs[pos]+'  Try a different faction on the same track to feel the contrast.';
+}
+
+function log(html,cls){G.logLines.unshift('<span class="'+(cls||'')+'">'+html+'</span>');if(G.logLines.length>40)G.logLines.pop();}
+
+function surfDot(surf){return '<span class="dot" style="background:'+(surf==='loose'?'var(--loose)':'var(--muted)')+'"></span>';}
+
+function render(){
+  const r=ranking();const max=Math.max(...r.map(x=>x.dist),1);
+  document.getElementById('tower').innerHTML=r.map((x,i)=>{
+    const gap = i===0
+      ? '<span style="color:var(--muted);font-size:11px;letter-spacing:1px">LEADER</span>'
+      : '+'+Math.max(0,(r[i-1].dist - x.dist)*GAP_SCALE).toFixed(3);
+    return `
+    <div class="row">
+      <div class="pos" style="color:${i===0?'var(--text)':'var(--muted)'}">${i+1}</div>
+      <div class="chip" style="background:${x.col}"></div>
+      <div class="nm">${x.nm}${x.dmg>0?' <span style="color:var(--push)">⚠</span>':''}<div class="cls">${x.cls}${x.dmg>0?' · dmg '+x.dmg:''}</div>
+        <div class="bar"><i style="width:${Math.max(3,x.dist/max*100)}%;background:${x.col}"></i></div></div>
+      <div class="dist mono"${x.you?' style="color:'+x.col+'"':''}>${gap}</div>
+    </div>`;}).join('');
+
+  const wornAll=[...G.draw,...G.discard,...G.hand].filter(c=>c.worn).length;
+  document.getElementById('deckCt').textContent=G.draw.length;
+  document.getElementById('discCt').textContent=G.discard.length;
+  document.getElementById('wornCt').textContent=wornAll;
+  document.getElementById('lapNo').textContent=Math.floor(G.sec/SPL)+1;
+  document.getElementById('lapTot').textContent=LAPS;
+  document.getElementById('secTot').textContent=G.track.length;
+  document.getElementById('secNo').textContent=Math.min(G.sec+1,G.track.length);
+
+  // status badges
+  let badges='';
+  G.activePowers.forEach(p=>badges+='<span class="badge pw">⚡ '+p+'</span>');
+  if(G.fk==='INDY')badges+='<span class="badge p2p">P2P ×'+G.p2p+'</span>';
+  if(G.fk==='RALLY'&&G.pacenotesPlayed)badges+='<span class="badge pw">notes read</span>';
+  document.getElementById('status').innerHTML=badges;
+
+  const s=curSector();
+  document.getElementById('secName').textContent=s.name;
+  const st=document.getElementById('secType');
+  st.textContent=s.type;st.className='sector-type '+(s.type==='corner'?'t-corner':'t-straight');
+  const ss=document.getElementById('secSurf');
+  if(s.surface==='loose'){ss.classList.remove('hide');ss.textContent='loose';}else ss.classList.add('hide');
+  document.getElementById('secDesc').textContent = s.surface==='loose'
+    ? 'Loose surface — circuit cars lose grip here. Rally setups thrive.'
+    : (s.type==='corner'?'Bank speed up to the grip limit. Every point over makes a Worn Tyre.':'No grip limit. Slipstream pays if a rival is just ahead.');
+  const limit=(s.type==='corner')?s.grip+G.gripBonus:null;
+  document.getElementById('gSpeed').textContent=G.secSpeed;
+  document.getElementById('gLimit').textContent=limit===null?'—':limit;
+  document.getElementById('gOver').textContent=limit===null?0:Math.max(0,G.secSpeed-limit);
+
+  // upcoming (next 2)
+  let up='';
+  for(let k=1;k<=2;k++){const n=G.track[G.sec+k];if(!n){up+='<div class="up"><div class="un">— flag —</div><div class="ut">finish</div></div>';continue;}
+    up+='<div class="up"><div class="un">'+n.name+'</div><div class="ut">'+surfDot(n.surface)+n.type+(n.surface==='loose'?' · loose':'')+'</div></div>';}
+  document.getElementById('upcoming').innerHTML=up;
+
+  const tv=document.getElementById('tyreVis');
+  let col=getComputedStyle(document.documentElement).getPropertyValue('--soft'),lab='OK',big='Tyres fresh';
+  if(wornAll>=2&&wornAll<5){col=getComputedStyle(document.documentElement).getPropertyValue('--med');lab='WRN';big='Tyres going off';}
+  if(wornAll>=5){col=getComputedStyle(document.documentElement).getPropertyValue('--hard');lab='CRIT';big='Tyres shot — box soon';}
+  tv.style.borderColor=col;tv.textContent=lab;
+  document.getElementById('tyreBig').textContent=big;
+  document.getElementById('tyreSmall').textContent=wornAll+' Worn card'+(wornAll===1?'':'s')+' jamming your deck.';
+
+  const dmgRow=document.getElementById('dmgRow');
+  if(G.damage>0){dmgRow.style.display='flex';document.getElementById('dmgVis').textContent=G.damage;}
+  else dmgRow.style.display='none';
+  document.getElementById('pitBtn').textContent=G.damage>0?'Box · repair (−9)':'Box · tyres (−5)';
+
+  const en=document.getElementById('energy');en.innerHTML='';
+  const shown=Math.max(G.maxEnergy,G.energy);
+  for(let i=0;i<shown;i++){const p=document.createElement('div');p.className='pip'+(i<G.energy?' on':'');en.appendChild(p);}
+  document.getElementById('enLabel').textContent=G.energy;
+
+  document.getElementById('hand').innerHTML=G.hand.map(c=>{
+    const dead=c.worn;
+    const noCharge=c.key==='p2p'&&G.p2p<=0;
+    const unaff=!dead&&(c.cost>G.energy||noCharge);
+    const ico=c.worn?'tyre':c.kind==='grip'?'grip':c.kind==='def'?'defend':c.kind==='manage'?'manage':c.kind==='power'?'power':c.kind==='boost'?'boost':'speed';
+    return `<div class="pcard ${c.worn?'wcard':''} ${c.kind==='power'?'power-c':''} ${dead?'dead':''} ${unaff?'unaffordable':''}" onclick="playCard('${c.uid}')">
+      <div class="cost">${c.cost}</div>
+      <div class="ico">${ico}${noCharge?' · 0 left':''}</div>
+      <div class="cn">${c.name}</div>
+      <div class="ct">${c.text}</div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('log').innerHTML=G.logLines.join('<br>');
+  updateMap();
+}
+
+function resolveCol(c){
+  if(typeof c==='string'&&c.startsWith('var(')){
+    const n=c.slice(4,-1).trim();
+    return (getComputedStyle(document.documentElement).getPropertyValue(n)||'#888').trim();
+  }
+  return c;
+}
+let mapInit=false;
+function setupMap(){
+  const path=document.getElementById('trackPath');if(!path)return;
+  const L=path.getTotalLength();
+  let html='';
+  for(let k=0;k<SPL;k++){const p=path.getPointAtLength((k/SPL)*L);html+='<circle cx="'+p.x.toFixed(1)+'" cy="'+p.y.toFixed(1)+'" r="2.2" class="tick"/>';}
+  document.getElementById('trackTicks').innerHTML=html;
+  mapInit=true;
+}
+function updateMap(){
+  const path=document.getElementById('trackPath');if(!path)return;
+  if(!mapInit)setupMap();
+  const L=path.getTotalLength();
+  const sweep=((G.sec%SPL)+0.5)/SPL;
+  const mp=path.getPointAtLength(sweep*L);
+  const marker=document.getElementById('sectorMarker');
+  marker.setAttribute('cx',mp.x.toFixed(1));marker.setAttribute('cy',mp.y.toFixed(1));
+  const r=ranking();const lead=r[0].dist;const PXU=1.6;
+  let out='';
+  r.forEach((car,i)=>{
+    const gap=lead-car.dist;
+    let off=Math.max(8*i,gap*PXU);off=Math.min(off,L*0.45);
+    let len=((sweep*L-off)%L+L)%L;
+    const p=path.getPointAtLength(len);
+    const fill=resolveCol(car.col);
+    const rad=i===0?5.5:4.5;
+    out+='<circle cx="'+p.x.toFixed(1)+'" cy="'+p.y.toFixed(1)+'" r="'+rad+'" fill="'+fill+'" stroke="'+(car.you?'#fff':'rgba(0,0,0,.45)')+'" stroke-width="'+(car.you?2:1)+'"/>';
+    if(car.dmg>0)out+='<text x="'+p.x.toFixed(1)+'" y="'+(p.y-7).toFixed(1)+'" text-anchor="middle" font-size="10" fill="#FF453A">⚠</text>';
+    if(car.you)out+='<text x="'+p.x.toFixed(1)+'" y="'+(p.y+14).toFixed(1)+'" text-anchor="middle" font-size="7" fill="#fff" font-family="Roboto Mono, monospace">YOU</text>';
+  });
+  document.getElementById('cars').innerHTML=out;
+}
+
+// build faction select
+document.getElementById('picks').innerHTML=Object.keys(DECKS).map(k=>{
+  const f=DECKS[k];
+  return `<div class="pick" style="border-top:3px solid ${f.col}" onclick="startRace('${k}')">
+    <span class="tag" style="background:${f.col}22;color:${f.col}">${f.tag}</span>
+    <h3>${f.name}</h3>
+    <p>${f.blurb}</p>
+    <div class="feat" style="white-space:pre-line">${f.feat}</div>
+  </div>`;
+}).join('');
+
+document.getElementById('endBtn').onclick=()=>endSector(false);
+document.getElementById('pitBtn').onclick=()=>pit();
+document.getElementById('againBtn').onclick=()=>{
+  document.documentElement.style.setProperty('--player','#00E5D1');
+  document.getElementById('banner').classList.add('hide');
+  document.getElementById('select').classList.remove('hide');
+};
+</script>
+</body>
+</html>
