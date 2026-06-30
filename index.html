@@ -108,6 +108,8 @@
   button.act:hover{filter:brightness(1.1)}
   button.pit{flex:0 0 auto;background:transparent;color:var(--push);border:1px solid var(--push)}
   button.pit:hover{background:rgba(255,69,58,.1)}
+  button.act:disabled{opacity:.35;cursor:not-allowed}
+  button.act:disabled:hover{filter:none;background:transparent}
 
   .log{margin-top:14px;font-family:"Roboto Mono",monospace;font-size:11px;color:var(--muted);max-height:120px;overflow-y:auto;line-height:1.7}
   .log b{color:var(--text)}
@@ -299,7 +301,7 @@ const REACH=6;        // "in reach ahead": a rival this many distance-units ahea
 // Mount Panorama, Bathurst — 6.2 km, all tarmac. Grip values reflect each corner's character:
 // low grip = tight/technical/easy to overdrive; straights carry the long flat-out sections.
 const BATHURST=[
-  {name:'Pit Straight',type:'straight',base:3,surface:'smooth'},
+  {name:'Pit Straight',type:'straight',base:3,surface:'smooth',pit:true},
   {name:'Hell Corner',type:'corner',grip:5,surface:'smooth'},
   {name:'Mountain Straight',type:'straight',base:4,surface:'smooth'},
   {name:'Griffins Bend',type:'corner',grip:6,surface:'smooth'},
@@ -530,6 +532,7 @@ function moveRivals(){
 }
 
 function pit(){
+  if(!curSector().pit){log('Pit lane closed — you can only box on the start/finish straight.','push');render();return;}
   const purge=z=>z.filter(c=>!c.worn);
   G.draw=purge(G.draw);G.discard=purge(G.discard);G.hand=purge(G.hand);
   const repairing=G.damage>0;
@@ -625,7 +628,9 @@ function render(){
   dv.style.borderColor = G.damage===0?cs.getPropertyValue('--soft'):(G.damage<6?cs.getPropertyValue('--med'):cs.getPropertyValue('--hard'));
   document.getElementById('dmgBig').textContent = G.damage===0?'No damage':'Damaged';
   document.getElementById('dmgSmall').textContent = G.damage===0?'Bodywork clean. Risky cards and The Dipper can hurt you.':'Losing '+G.damage+' distance every sector (≈'+(G.damage*GAP_SCALE).toFixed(2)+'s) until you box and repair.';
-  document.getElementById('pitBtn').textContent=G.damage>0?'Box · repair (−9)':'Box · tyres (−5)';
+  const atPit=curSector().pit, pitBtn=document.getElementById('pitBtn');
+  pitBtn.disabled=!atPit;
+  pitBtn.textContent = !atPit ? 'Box · pit straight only' : (G.damage>0?'Box · repair (−9)':'Box · tyres (−5)');
 
   const en=document.getElementById('energy');en.innerHTML='';
   const shown=Math.max(G.maxEnergy,G.energy);
