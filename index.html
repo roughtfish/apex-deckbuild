@@ -661,7 +661,18 @@ function setupMap(){
   const path=document.getElementById('trackPath');if(!path)return;
   const L=path.getTotalLength();
   let html='';
-  for(let k=0;k<SPL;k++){const p=path.getPointAtLength(((k+0.5)/SPL)*L);html+='<circle cx="'+p.x.toFixed(1)+'" cy="'+p.y.toFixed(1)+'" r="2.2" class="tick"/>';}
+  // boundary lines at the start/end of each sector (k/SPL), perpendicular to the track
+  for(let k=0;k<SPL;k++){
+    const len=(k/SPL)*L;
+    const p=path.getPointAtLength(len);
+    const a=path.getPointAtLength(((len-1)%L+L)%L);
+    const b=path.getPointAtLength((len+1)%L);
+    let dx=b.x-a.x, dy=b.y-a.y; const m=Math.hypot(dx,dy)||1; dx/=m; dy/=m;
+    const nx=-dy, ny=dx, sf=(k===0), hl=sf?9:7;
+    html+='<line x1="'+(p.x-nx*hl).toFixed(1)+'" y1="'+(p.y-ny*hl).toFixed(1)+'" x2="'+(p.x+nx*hl).toFixed(1)+'" y2="'+(p.y+ny*hl).toFixed(1)+'" stroke="'+(sf?'#E6EDF3':'#5A6675')+'" stroke-width="'+(sf?2.5:1.5)+'"/>';
+  }
+  // sector centre dots at (k+0.5)/SPL
+  for(let k=0;k<SPL;k++){const p=path.getPointAtLength(((k+0.5)/SPL)*L);html+='<circle cx="'+p.x.toFixed(1)+'" cy="'+p.y.toFixed(1)+'" r="2" class="tick"/>';}
   document.getElementById('trackTicks').innerHTML=html;
   mapInit=true;
 }
