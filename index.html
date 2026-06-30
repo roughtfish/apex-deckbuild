@@ -13,8 +13,8 @@
     --text:#E6EDF3; --muted:#7D8896;
     --push:#FF453A;
     --player:#00E5D1;
-    --f1:#E10600; --stock:#3D7DFF; --touring:#FFB000;
-    --indy:#B14CFF; --rally:#E8743B;
+    --f1:#E10600; --nascar:#3D7DFF; --v8:#1FB85A; --btcc:#FFC400;
+    --indy:#B14CFF; --rally:#E8743B; --gt4:#00E5D1;
     --soft:#34C759; --med:#FFB000; --hard:#FF453A;
     --loose:#E8743B;
   }
@@ -31,7 +31,7 @@
   .label{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:10px}
 
   /* faction select */
-  .picks{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+  .picks{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
   @media(max-width:760px){.picks{grid-template-columns:1fr}}
   .pick{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px;cursor:pointer;
     transition:transform .12s,border-color .12s}
@@ -210,7 +210,7 @@
   </div>
 
 <script>
-const CLASS_COL={GT3:'var(--player)',INDY:'var(--indy)',RALLY:'var(--rally)',F1:'var(--f1)',STOCK:'var(--stock)',TOURING:'var(--touring)'};
+// faction colours live on each DECKS entry's .col
 
 const CARD={
   throttle:{name:'Throttle',cost:1,kind:'speed',text:'+2 speed.'},
@@ -233,18 +233,64 @@ const CARD={
   antilag:{name:'Anti-Lag',cost:0,kind:'boost',text:'+2 energy this sector. Make 1 Worn.'},
   flatcrest:{name:'Flat Over Crest',cost:2,kind:'speed',text:'+7 speed. Make 3 Worn unless you played Pacenotes this race.'},
   allsurface:{name:'All-Surface',cost:1,kind:'power',text:'POWER: ignore loose penalty, +2 speed on every loose sector.'},
+  // F1
+  overtake:{name:'Overtake Mode',cost:1,kind:'boost',text:'+5 and pass if a rival is within reach ahead, else +2.'},
+  activeaero:{name:'Active Aero',cost:1,kind:'speed',text:'+5 on a straight, +1 in a corner (low-drag mode).'},
+  boost:{name:'Boost Mode',cost:1,kind:'boost',text:'+4 speed, deploy anywhere.'},
+  cleanair:{name:'Clean Air',cost:1,kind:'speed',text:'+6 if no rival within reach ahead, else +1 (hates traffic).'},
+  qualilap:{name:'Qualifying Lap',cost:2,kind:'speed',text:'+8 speed. Make 2 Worn. Glass cannon.'},
+  autoblip:{name:'Auto-Blip',cost:1,kind:'power',text:'POWER: corners make 1 fewer Worn (paddle-shift).'},
+  // V8 Supercars
+  heeltoe:{name:'Heel & Toe',cost:1,kind:'grip',text:'Corner: +3, no wear — but +0 if you hold a Worn (missed shift).'},
+  mountainmaster:{name:'Mountain Master',cost:1,kind:'speed',text:'+3 speed, +3 more in a corner.'},
+  leanon:{name:'Lean On Them',cost:1,kind:'boost',text:'Pass a rival ahead; they lose 4. Make 1 Worn.'},
+  conserve:{name:'Conserve',cost:1,kind:'manage',text:'Scrub 2 Worn from your deck. +3 speed.'},
+  enduro:{name:'Enduro Stint',cost:1,kind:'speed',text:'+2 speed for each Worn in your discard.'},
+  // BTCC
+  switchback:{name:'Switchback',cost:1,kind:'boost',text:'Rival just ahead → +5 and cut back to pass. Else +2.'},
+  threewide:{name:'Three Wide',cost:1,kind:'speed',text:'+6 if 2+ rivals within reach, else +2.'},
+  divebomb:{name:'Dive Bomb',cost:2,kind:'boost',text:'Corner: +6, pass a rival, make 2 Worn.'},
+  ballast:{name:'Success Ballast',cost:0,kind:'power',text:'POWER: +3 each sector while NOT leading; nothing while you lead.'},
+  // NASCAR
+  bumpdraft:{name:'Bump Draft',cost:1,kind:'boost',text:'Rival ahead → +4 and draw. Else +2.'},
+  sidedraft:{name:'Side-Draft',cost:1,kind:'speed',text:'Straight + rival ahead: +4 and they lose 3. Else +2.'},
+  highline:{name:'Run the High Line',cost:1,kind:'grip',text:'Corner: +5, no wear. Straight: +3.'},
+  packracing:{name:'Pack Racing',cost:1,kind:'speed',text:'+2 speed for each rival within reach.'},
+  slingshot:{name:'Slingshot',cost:2,kind:'boost',text:'If 2nd or 3rd: +7 and pass. Else +3.'},
+  // GT4
+  tyremgmt:{name:'Tyre Whisperer',cost:1,kind:'power',text:'POWER: corners make 1 fewer Worn.'},
+  stintpace:{name:'Stint Pace',cost:1,kind:'speed',text:'+2 speed for each Worn in your discard.'},
 };
 
 const DECKS={
-  GT3:{name:'GT3',col:CLASS_COL.GT3,tag:'control',blurb:'The baseline. Steady racecraft and tyre management — but no answer for a loose surface except to grit your teeth through it.',
-    feat:'• Manage & reel them in late\n• Suffers on loose sectors',
-    cards:['throttle','throttle','throttle','throttle','throttle','slipstream','slipstream','sendit','sendit','trailbrake','liftcoast','lunge','defend']},
-  INDY:{name:'IndyCar',col:CLASS_COL.INDY,tag:'all-rounder',blurb:'The versatile boost deck. Finite Push-to-Pass charges give huge tempo swings, and a setup Power makes the surface irrelevant — but the boost runs out.',
+  F1:{name:'F1',col:'var(--f1)',tag:'raw pace · fragile',fragile:true,driver:'VERSTRAPP',behaviour:'f1',
+    blurb:'Blistering top-end speed that punishes mistakes and hates traffic — and grounds out over The Dipper. Fast, brittle, unforgiving.',
+    feat:'• Huge speed, hates traffic\n• Fragile: takes Dipper damage',
+    cards:['throttle','throttle','throttle','slipstream','overtake','activeaero','boost','cleanair','qualilap','autoblip','lunge','defend']},
+  V8:{name:'V8 Supercars',col:'var(--v8)',tag:'Bathurst specialist',driver:'VANGIS',behaviour:'v8',
+    blurb:'Heavy, durable touring muscle built for the Mountain. Strong through corners, brilliant on long stints, happy to lean on people.',
+    feat:'• Corner-strong and durable\n• Gets stronger as tyres go off',
+    cards:['throttle','throttle','throttle','slipstream','slipstream','heeltoe','mountainmaster','leanon','conserve','enduro','trailbrake','lunge','defend']},
+  BTCC:{name:'BTCC',col:'var(--btcc)',tag:'scrappy comeback',driver:'SUTTON',behaviour:'btcc',
+    blurb:'Rubbing-is-racing touring cars. Thrives in the pack, turns contact into position, and fights hardest when it is behind.',
+    feat:'• Comeback engine from behind\n• Pack-fighting contact passes',
+    cards:['throttle','throttle','throttle','slipstream','heeltoe','switchback','leanon','threewide','divebomb','ballast','lunge','defend']},
+  NASCAR:{name:'NASCAR',col:'var(--nascar)',tag:'draft & pack',driver:'EARNHART',behaviour:'nascar',
+    blurb:'Stock-car draft deck. Weak alone, terrifying in a chain — bump drafts, side-drafts and a slingshot that comes alive in traffic.',
+    feat:'• Monster in a pack\n• Slingshot from 2nd/3rd',
+    cards:['throttle','throttle','throttle','slipstream','bumpdraft','sidedraft','highline','packracing','slingshot','trailbrake','lunge','defend']},
+  INDY:{name:'IndyCar',col:'var(--indy)',tag:'all-rounder',driver:'DIXON',behaviour:'indy',
+    blurb:'The versatile boost deck. Finite Push-to-Pass charges give huge tempo swings, and a setup Power makes surfaces irrelevant — but the boost runs out.',
     feat:'• 5× Push-to-Pass charges\n• Versatile Setup negates surfaces',
     cards:['throttle','throttle','throttle','throttle','slipstream','slipstream','p2p','p2p','hybrid','restart','reds','versatile','lunge','defend']},
-  RALLY:{name:'Rally',col:CLASS_COL.RALLY,tag:'surface specialist',blurb:'The read-and-gamble deck. Owns the loose sectors and reads the road with pacenotes — but its weapons backfire on smooth tarmac and can blow up its own deck.',
-    feat:'• Dominant on loose, weak on smooth\n• Gambles wear for raw pace',
+  RALLY:{name:'Rally',col:'var(--rally)',tag:'surface specialist',driver:'LOEB',behaviour:'rally',
+    blurb:'Reads the road and gambles for pace. Owns loose surfaces — but its weapons backfire on smooth tarmac, so the Mountain is hostile ground.',
+    feat:'• Dominant on loose, weak on tarmac\n• Gambles wear for raw pace',
     cards:['throttle','throttle','throttle','throttle','pacenotes','flick','flick','handbrake','antilag','flatcrest','flatcrest','allsurface','lunge','defend']},
+  GT4:{name:'GT4',col:'var(--gt4)',tag:'tyre management',driver:'BARNES',behaviour:'gt4',
+    blurb:'The endurance engine. Steady racecraft that gets stronger as the field wears out — manage the tyres and reel them in late.',
+    feat:'• Strong late as others fade\n• Best tyre management on the grid',
+    cards:['throttle','throttle','throttle','throttle','slipstream','slipstream','sendit','trailbrake','tyremgmt','stintpace','liftcoast','lunge','defend']},
 };
 
 const LAPS=2;
@@ -276,20 +322,19 @@ let G;
 function startRace(fk){
   const f=DECKS[fk];
   const deck=f.cards.map((k,i)=>({key:k,...CARD[k],uid:i+'_'+k}));
+  const others=shuffle(Object.keys(DECKS).filter(k=>k!==fk)).slice(0,3);
+  const rivals=others.map(k=>{const d=DECKS[k];return {nm:d.driver,cls:k,col:d.col,dist:0,dmg:0,fragile:!!d.fragile,behaviour:d.behaviour};});
   G={
     fk, fcol:f.col, deck, draw:shuffle([...deck]), hand:[], discard:[],
     track:buildTrack(), sec:0,
     energy:3, maxEnergy:3, pendingEnergy:0,
     secSpeed:0, gripBonus:0, defend:false,
-    powers:{versatile:false, allSurface:false}, activePowers:[],
+    powers:{versatile:false, allSurface:false, wearcut:false, ballast:false}, activePowers:[],
     p2p: fk==='INDY'?5:0,
     pacenotesPlayed:false,
+    playerFragile: !!f.fragile,
     player:0, damage:0,
-    rivals:[
-      {nm:'VERSTRAPP',cls:'F1',col:CLASS_COL.F1,dist:0,dmg:0,fragile:true},
-      {nm:'EARNHART',cls:'STOCK',col:CLASS_COL.STOCK,dist:0,dmg:0,fragile:false},
-      {nm:'SUTTON',cls:'TOURING',col:CLASS_COL.TOURING,dist:0,dmg:0,fragile:false},
-    ],
+    rivals,
     logLines:[]
   };
   // player tower colour follows faction
@@ -299,13 +344,10 @@ function startRace(fk){
   document.getElementById('game').classList.remove('hide');
   document.getElementById('handPanel').classList.remove('hide');
   drawHand();
-  log('Lights out — you start P4 in the '+f.name+'.','');
-  if(fk==='RALLY'){
-    const looseCount=G.track.filter(s=>s.surface==='loose').length;
-    if(looseCount===0)log('All tarmac at the Mountain — your flicks will bite. Lean on the handbrake through the tight stuff and send it down Conrod.','push');
-    else log('Loose sectors ahead — this is your turf.','loose');
-  }
+  log('Lights out — P'+(rivals.length+1)+' in the '+f.name+', against '+rivals.map(r=>DECKS[r.cls].name).join(', ')+'.','');
+  if(fk==='RALLY')log('All tarmac at the Mountain — your flicks will bite. Lean on the handbrake and send it down Conrod.','push');
   if(fk==='INDY')log('5 Push-to-Pass charges. Spend them well.','good');
+  if(f.fragile)log('Fragile car — brace for The Dipper. You will ground out and take damage, just like the F1 it is.','push');
   render();
 }
 
@@ -321,9 +363,14 @@ function rivalAhead(){return G.rivals.some(r=>r.dist>G.player && r.dist-G.player
 function notLeading(){return G.rivals.some(r=>r.dist>G.player);}
 function passNearestAhead(){
   const ahead=G.rivals.filter(r=>r.dist>G.player).sort((a,b)=>a.dist-b.dist)[0];
-  if(ahead){G.player=ahead.dist+1;log('Passed '+ahead.nm+' ('+ahead.cls+').','good');return true;}
+  if(ahead){G.player=ahead.dist+1;log('Passed '+ahead.nm+' ('+DECKS[ahead.cls].name+').','good');return true;}
   log('Nobody ahead to pass — clear track.','');return false;
 }
+function pushPower(n){if(!G.activePowers.includes(n))G.activePowers.push(n);}
+function rivalsReachCount(){return G.rivals.filter(r=>r.dist>G.player && r.dist-G.player<=6).length;}
+function myPosition(){return G.rivals.filter(r=>r.dist>G.player).length+1;}
+function reduceNearestAhead(n){const a=G.rivals.filter(r=>r.dist>G.player).sort((x,y)=>x.dist-y.dist)[0];if(a){a.dist=Math.max(G.player,a.dist-n);return true;}return false;}
+function removeWorn(n){let c=0;const strip=z=>{for(let i=z.length-1;i>=0&&c<n;i--){if(z[i].worn){z.splice(i,1);c++;}}};strip(G.discard);strip(G.draw);strip(G.hand);return c;}
 
 function playCard(uid){
   const i=G.hand.findIndex(c=>c.uid===uid);if(i<0)return;
@@ -376,6 +423,32 @@ function playCard(uid){
       else log('FLAT OVER CREST → +7, called by pacenotes — clean.','good');
       break;
     case 'allsurface': G.powers.allSurface=true; if(!G.activePowers.includes('All-Surface'))G.activePowers.push('All-Surface'); log('POWER: All-Surface — loose sectors now boost you.','good'); toDiscard=false; break;
+    // F1
+    case 'overtake':{const b=rivalAhead()?5:2;G.secSpeed+=b;log('Overtake Mode → +'+b+'.',b===5?'good':'');if(b===5)passNearestAhead();break;}
+    case 'activeaero':{const b=corner?1:5;G.secSpeed+=b;log('Active Aero ('+(corner?'corner':'straight')+') → +'+b+'.','');break;}
+    case 'boost': G.secSpeed+=4; log('Boost Mode → +4.','good'); break;
+    case 'cleanair':{const b=rivalAhead()?1:6;G.secSpeed+=b;log('Clean Air → +'+b+(b===6?' (clear track)':' (stuck in traffic)')+'.',b===6?'good':'push');break;}
+    case 'qualilap': G.secSpeed+=8; makeWorn(2); log('Qualifying Lap → +8, <span class="push">2× Worn</span>.','good'); break;
+    case 'autoblip': G.powers.wearcut=true; pushPower('Auto-Blip'); log('POWER: Auto-Blip — corners shed 1 less Worn.','good'); toDiscard=false; break;
+    // V8 Supercars
+    case 'heeltoe':{const hw=G.hand.some(x=>x.worn);if(corner&&!hw){G.secSpeed+=3;G.gripBonus+=3;log('Heel & toe — rev-matched, clean → +3, no wear.','good');}else if(corner){log('Heel & toe — fumbled on worn tyres → +0.','push');}else{G.secSpeed+=2;log('Heel & toe (no corner) → +2.','');}break;}
+    case 'mountainmaster':{const b=3+(corner?3:0);G.secSpeed+=b;log('Mountain Master → +'+b+'.',corner?'good':'');break;}
+    case 'leanon':{if(reduceNearestAhead(4)){passNearestAhead();makeWorn(1);log('Lean on them — muscled past, <span class="push">1× Worn</span>.','good');}else log('Lean on them — nobody ahead to lean on.','');break;}
+    case 'conserve':{const c2=removeWorn(2);G.secSpeed+=3;log('Conserve — scrubbed '+c2+' Worn, +3.','good');break;}
+    case 'enduro': case 'stintpace':{const w=[...G.draw,...G.discard].filter(x=>x.worn).length;G.secSpeed+=2*w;log(c.name+' → +'+(2*w)+' ('+w+' Worn working for you).',w>0?'good':'');break;}
+    // BTCC
+    case 'switchback':{if(rivalAhead()){G.secSpeed+=5;log('Switchback → +5, cut back.','good');passNearestAhead();}else{G.secSpeed+=2;log('Switchback → +2.','');}break;}
+    case 'threewide':{const n=rivalsReachCount();const b=n>=2?6:2;G.secSpeed+=b;log('Three Wide → +'+b+(n>=2?' (side by side by side)':'')+'.',b===6?'good':'');break;}
+    case 'divebomb':{G.secSpeed+=6;makeWorn(2);const ok=passNearestAhead();log('Dive bomb → +6, <span class="push">2× Worn</span>'+(ok?', pass made.':'.'),'push');break;}
+    case 'ballast': G.powers.ballast=true; pushPower('Success Ballast'); log('POWER: Success Ballast — you fight harder from behind.','good'); toDiscard=false; break;
+    // NASCAR
+    case 'bumpdraft':{if(rivalAhead()){G.secSpeed+=4;drawOne();log('Bump draft → +4 and drew a card.','good');}else{G.secSpeed+=2;log('Bump draft → +2.','');}break;}
+    case 'sidedraft':{if(!corner&&rivalAhead()){G.secSpeed+=4;reduceNearestAhead(3);log('Side-draft → +4, took their air (−3 to them).','good');}else{G.secSpeed+=2;log('Side-draft → +2.','');}break;}
+    case 'highline':{if(corner){G.secSpeed+=5;G.gripBonus+=5;log('High line → +5, no wear.','good');}else{G.secSpeed+=3;log('High line → +3.','');}break;}
+    case 'packracing':{const n=rivalsReachCount();G.secSpeed+=2*n;log('Pack racing → +'+(2*n)+' ('+n+' in reach).',n>0?'good':'');break;}
+    case 'slingshot':{const p=myPosition();if(p===2||p===3){G.secSpeed+=7;log('Slingshot → +7!','good');passNearestAhead();}else{G.secSpeed+=3;log('Slingshot → +3 (out of position).','');}break;}
+    // GT4
+    case 'tyremgmt': G.powers.wearcut=true; pushPower('Tyre Whisperer'); log('POWER: Tyre Whisperer — corners shed 1 less Worn.','good'); toDiscard=false; break;
   }
   G.hand.splice(i,1);
   if(toDiscard){c._played=true;G.discard.push(c);}
@@ -391,28 +464,34 @@ function endSector(coastThrough=false){
   let penalty=0, bonus=0;
   if(loose && !G.powers.versatile && !G.powers.allSurface) penalty=Math.min(raw,3);
   if(loose && G.powers.allSurface) bonus=2;
-  let gained=raw-penalty+bonus;
+  let ballastBonus=0;
+  if(G.powers.ballast && notLeading()) ballastBonus=3;
+  let gained=raw-penalty+bonus+ballastBonus;
   if(coastThrough)gained=0;
   let dmgDrag=0;
   if(!coastThrough && G.damage>0){dmgDrag=Math.min(gained,G.damage);gained-=dmgDrag;}
 
   const over=corner?Math.max(0,G.secSpeed-limit):0;
+  let wornMade=over;
+  if(G.powers.wearcut && corner && wornMade>0) wornMade=Math.max(0,wornMade-1);
   G.player+=gained;
-  if(over>0)makeWorn(over);
+  if(wornMade>0)makeWorn(wornMade);
 
   if(corner){
-    if(over>0)log('<b>'+s.name+'</b> ('+(loose?'loose ':'')+'corner): <span class="push">'+over+' over</span> grip → +'+gained+' dist, <span class="push">'+over+'× Worn</span>.','');
+    if(over>0)log('<b>'+s.name+'</b> ('+(loose?'loose ':'')+'corner): <span class="push">'+over+' over</span> grip → +'+gained+' dist, <span class="push">'+wornMade+'× Worn</span>.','');
     else log('<b>'+s.name+'</b> ('+(loose?'loose ':'')+'corner): clean → +'+gained+' dist.','good');
   } else {
     log('<b>'+s.name+'</b> (straight): +'+gained+' dist.','');
   }
   if(penalty>0)log('  ↳ loose surface cost you '+penalty+' — no setup for it.','loose');
   if(bonus>0)log('  ↳ all-surface setup: +'+bonus+' on the rough.','loose');
+  if(ballastBonus>0)log('  ↳ success ballast: +3, fighting from behind.','good');
   if(dmgDrag>0)log('  ↳ damaged car dragging — lost '+dmgDrag+' this sector.','push');
 
-  // The Dipper grounds out fragile cars (the F1)
+  // The Dipper grounds out fragile cars
   if(s.hazard){
-    G.rivals.forEach(rv=>{if(rv.fragile){rv.dmg+=3;log(rv.nm+' bottoms out over The Dipper — <span class="push">+3 damage</span> to the '+rv.cls+'.','push');}});
+    G.rivals.forEach(rv=>{if(rv.fragile){rv.dmg+=3;log(rv.nm+' bottoms out over The Dipper — <span class="push">+3 damage</span> to the '+DECKS[rv.cls].name+'.','push');}});
+    if(G.playerFragile){G.damage+=3;log('You ground out over The Dipper — <span class="push">+3 damage</span> to your '+DECKS[G.fk].name+'.','push');}
   }
 
   moveRivals();
@@ -429,14 +508,19 @@ function endSector(coastThrough=false){
 
 function moveRivals(){
   const progress=G.sec/G.track.length;
-  const s=curSector();
+  const s=curSector();const corner=s.type==='corner',straight=s.type==='straight';
   G.rivals.forEach(r=>{
-    let pace=5+Math.random()*2;
-    if(r.cls==='F1'){pace=8-progress*5+Math.random()*1.5;}
-    if(r.cls==='STOCK'){const near=[...G.rivals,{dist:G.player}].some(o=>o!==r&&Math.abs(o.dist-r.dist)<5);pace=5+(near?3:0)+Math.random()*1.5;}
-    if(r.cls==='TOURING'){pace=4.5+(s.type==='corner'?2:0)+Math.random()*1.2;}
-    // circuit rivals also struggle on loose
-    if(s.surface==='loose')pace-=2;
+    let pace=5+Math.random()*1.5;
+    switch(r.behaviour){
+      case 'f1': pace=8-progress*5+Math.random()*1.5; break;
+      case 'nascar':{const near=[...G.rivals,{dist:G.player}].some(o=>o!==r&&Math.abs(o.dist-r.dist)<5);pace=5+(near?3:0)+Math.random()*1.5;break;}
+      case 'v8': pace=5.5+(corner?2:0)+Math.random()*1.2; break;
+      case 'btcc': pace=5+(r.dist<G.player?2:0)+Math.random()*1.4; break;
+      case 'indy': pace=5.5+(straight?1:0)+Math.random()*1.3; break;
+      case 'rally': pace=(s.surface==='loose'?7:4)+Math.random()*1.2; break;
+      case 'gt4': pace=5+progress*1+Math.random()*1.2; break;
+    }
+    if(s.surface==='loose' && r.behaviour!=='rally')pace-=2;
     pace-=r.dmg*0.5;
     const before=r.dist;
     r.dist+=Math.max(0,pace);
