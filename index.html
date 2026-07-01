@@ -557,10 +557,14 @@ function showEventCard(typeClass,icon,title,flavor,outcomeText,tone){
   eo.textContent=outcomeText;eo.className='ec-outcome '+tone;
   void el.offsetWidth; // restart animation even if triggered twice in a row
   el.classList.add('show');
-  el._hideTimer=setTimeout(()=>{
-    el.classList.add('leaving');
-    setTimeout(()=>{el.classList.remove('show');el.classList.remove('leaving');},420);
-  },5500);
+  // stays visible until dismissEventCard() is called — i.e. until the sector it was announced on is resolved
+}
+function dismissEventCard(){
+  const el=document.getElementById('eventCard');
+  if(!el)return;
+  clearTimeout(el._hideTimer);
+  el.classList.add('leaving');
+  el._hideTimer=setTimeout(()=>{el.classList.remove('show');el.classList.remove('leaving');},420);
 }
 function applyEventPenalty(isPlayer,rivalRef,dmg,dist,worn){
   if(isPlayer){
@@ -610,6 +614,7 @@ function announceEvent(typeClass,evt,outcomeText,tone){
 function triggerLapEvent(){
   const pool=eventPool();
   const evt=pool[Math.random()*pool.length|0];
+  G.eventKeepUntilSec=null; // default: card resolves after this sector, unless a branch below extends it
 
   if(evt.type==='safety'){
     const r=ranking();
@@ -635,6 +640,7 @@ function triggerLapEvent(){
       if(!revertPool.length)return;
       const target=revertPool[Math.random()*revertPool.length|0];
       target.surface='smooth';delete target._eventLoose;
+      G.eventKeepUntilSec=target.idx;
       announceEvent('type-surface',evt,evt.text([target]),'neutral');
       return;
     }
@@ -663,6 +669,7 @@ function triggerLapEvent(){
       if(evt.mode==='loose'){sec.surface='loose';sec._eventLoose=true;}
       else if(evt.mode==='grip'){sec.grip=Math.max(1,sec.grip+evt.delta);}
     });
+    G.eventKeepUntilSec=Math.max(...chosen.map(sec=>sec.idx));
     announceEvent('type-surface',evt,evt.text(chosen),'neutral');
     return;
   }
@@ -756,7 +763,7 @@ function startRace(fk){
   const rivals=others.map(k=>{const d=DECKS[k];return {nm:d.driver,cls:k,col:d.col,dist:0,dmg:0,slow:0,wear:0,aggr:0.45+Math.random()*0.5,lastCard:'',fragile:!!d.fragile,behaviour:d.behaviour};});
   G={
     fk, fcol:f.col, deck, draw:shuffle([...deck]), hand:[], discard:[],
-    track:buildTrack(), trackId:TRACK_ID, lastPitCls:null, sec:0,
+    track:buildTrack(), trackId:TRACK_ID, lastPitCls:null, eventKeepUntilSec:null, sec:0,
     energy:3, maxEnergy:3, pendingEnergy:0,
     secSpeed:0, gripBonus:0, defend:false,
     powers:{versatile:false, allSurface:false, wearcut:false, ballast:false, bulletproof:false, draftfree:false}, activePowers:[],
@@ -917,6 +924,11 @@ function playCard(uid){
 }
 
 function endSector(coastThrough=false){
+  // clear the event card only once its target sector (if any) has actually been resolved
+  if(G.eventKeepUntilSec==null || G.sec>G.eventKeepUntilSec){
+    dismissEventCard();
+    G.eventKeepUntilSec=null;
+  }
   const s=curSector();
   const corner=s.type==='corner', loose=s.surface==='loose', straight=s.type==='straight';
   const limit=corner?s.grip+G.gripBonus:999;
