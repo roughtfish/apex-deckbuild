@@ -305,6 +305,8 @@ const GAP_SCALE=0.35; // converts abstract distance units into seconds of interv
 const REACH=6;        // "in reach ahead": a rival this many distance-units ahead or closer (~2.1s on the tower)
 const LEAN_PEN=4;     // Lean On Them: pace a disrupted rival loses next sector (distance units)
 const SIDE_PEN=3;     // Side-Draft: pace a disrupted rival loses next sector (distance units)
+// base pit-stop cost by category, reflecting real-life crew speed (F1 fastest, NASCAR slowest)
+const PITBASE={F1:4, BTCC:5, INDY:5, V8:6, RALLY:6, GT4:7, NASCAR:8};
 // Mount Panorama, Bathurst — 6.2 km, all tarmac. Grip values reflect each corner's character:
 // low grip = tight/technical/easy to overdrive; straights carry the long flat-out sections.
 const BATHURST=[
@@ -592,15 +594,21 @@ function moveRivals(){
   log('<span style="color:var(--muted)">▸ '+G.rivals.map(r=>r.nm+' '+r.lastCard).join(' · ')+'</span>','');
 }
 
+function pitCost(){
+  const base=PITBASE[G.fk]||6;
+  const worn=[...G.draw,...G.discard,...G.hand].filter(c=>c.worn).length;
+  const wearCost=Math.round(worn*0.4);   // scrubbing a degraded set
+  const dmgCost=G.damage;                // bodywork/mechanical repair, 1 per damage point
+  return {base,worn,wearCost,dmgCost,total:base+wearCost+dmgCost};
+}
 function pit(){
   if(!curSector().pit || G.sec===0){log('Pit lane closed — you can only box passing the pits, and not off the start line.','push');render();return;}
+  const pc=pitCost();
   const purge=z=>z.filter(c=>!c.worn);
   G.draw=purge(G.draw);G.discard=purge(G.discard);G.hand=purge(G.hand);
-  const repairing=G.damage>0;
-  const cost=5+(repairing?4:0);
   G.damage=0;
-  G.player-=cost;
-  log('<b>BOX BOX</b> — '+(repairing?'fresh tyres + repairs':'fresh tyres')+', dropped '+cost+' of track position.','push');
+  G.player-=pc.total;
+  log('<b>BOX BOX</b> — '+DECKS[G.fk].name+' stop: crew '+pc.base+(pc.wearCost>0?' · tyres '+pc.wearCost:'')+(pc.dmgCost>0?' · repairs '+pc.dmgCost:'')+' = <span class="push">−'+pc.total+'</span> track position.','push');
   endSector(true);
 }
 
@@ -691,7 +699,7 @@ function render(){
   document.getElementById('dmgSmall').textContent = G.damage===0?'Bodywork clean. Risky cards and The Dipper can hurt you.':'Losing '+G.damage+' distance every sector (≈'+(G.damage*GAP_SCALE).toFixed(2)+'s) until you box and repair.';
   const atPit=curSector().pit && G.sec>0, pitBtn=document.getElementById('pitBtn');
   pitBtn.disabled=!atPit;
-  pitBtn.textContent = !atPit ? 'Box · pit straight only' : (G.damage>0?'Box · repair (−9)':'Box · tyres (−5)');
+  pitBtn.textContent = !atPit ? 'Box · pit straight only' : ('Box · −'+pitCost().total+(G.damage>0?' (repairs)':''));
 
   const en=document.getElementById('energy');en.innerHTML='';
   const shown=Math.max(G.maxEnergy,G.energy);
