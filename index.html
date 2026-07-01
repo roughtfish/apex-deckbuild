@@ -275,30 +275,37 @@ const DECKS={
   F1:{name:'F1',col:'var(--f1)',tag:'raw pace · fragile',fragile:true,driver:'VERSTRAPP',behaviour:'f1',
     blurb:'Blistering top-end speed that punishes mistakes and hates traffic — and grounds out over The Dipper. Fast, brittle, unforgiving.',
     feat:'• Huge speed, hates traffic\n• Fragile: takes Dipper damage',
+    pace:'Base pace: fastest car on the grid early, but fades hard as the race goes on — roughly halves by the flag.',
     cards:['throttle','throttle','throttle','slipstream','slipstream','overtake','overtake','activeaero','boost','cleanair','qualilap','autoblip','lunge','defend']},
   V8:{name:'V8 Supercars',col:'var(--v8)',tag:'Bathurst specialist',driver:'VANGIS',behaviour:'v8',
     blurb:'Heavy, durable touring muscle built for the Mountain. Strong through corners, brilliant on long stints, happy to lean on people.',
     feat:'• Corner-strong and durable\n• Bulletproof shrugs off damage',
+    pace:'Base pace: solid all-round, with a real step up through every corner.',
     cards:['throttle','throttle','throttle','slipstream','slipstream','heeltoe','mountainmaster','leanon','conserve','enduro','bulletproof','trailbrake','lunge','defend']},
   BTCC:{name:'BTCC',col:'var(--btcc)',tag:'scrappy comeback',driver:'SUTTON',behaviour:'btcc',
     blurb:'Rubbing-is-racing touring cars. Thrives in the pack, turns contact into position, and fights hardest when it is behind.',
     feat:'• Comeback engine from behind\n• Pack-fighting contact passes',
+    pace:'Base pace: modest out front, but noticeably quicker any sector it spends chasing you down.',
     cards:['throttle','throttle','throttle','slipstream','slipstream','heeltoe','switchback','leanon','threewide','threewide','divebomb','ballast','lunge','defend']},
   NASCAR:{name:'NASCAR',col:'var(--nascar)',tag:'draft & pack',driver:'EARNHART',behaviour:'nascar',
     blurb:'Stock-car draft deck. Weak alone, terrifying in a chain — bump drafts, side-drafts and a slingshot that comes alive in traffic.',
     feat:'• Monster in a pack\n• Draft Discipline makes drafting free',
+    pace:'Base pace: unremarkable alone, but a big jump whenever it is running close behind another car.',
     cards:['throttle','throttle','throttle','slipstream','slipstream','bumpdraft','sidedraft','highline','packracing','slingshot','draftdisc','trailbrake','lunge','defend']},
   INDY:{name:'IndyCar',col:'var(--indy)',tag:'all-rounder',driver:'DIXON',behaviour:'indy',
     blurb:'The versatile boost deck. Finite Push-to-Pass charges give huge tempo swings, and a setup Power makes surfaces irrelevant — but the boost runs out.',
     feat:'• 5× Push-to-Pass charges\n• Versatile Setup negates surfaces',
+    pace:'Base pace: even everywhere, with a small extra edge on the straights.',
     cards:['throttle','throttle','throttle','throttle','slipstream','slipstream','p2p','p2p','hybrid','restart','reds','versatile','lunge','defend']},
   RALLY:{name:'Rally',col:'var(--rally)',tag:'surface specialist',driver:'LOEB',behaviour:'rally',
     blurb:'Reads the road and gambles for pace. Owns loose surfaces — but its weapons backfire on smooth tarmac, so the Mountain is hostile ground.',
     feat:'• Dominant on loose, weak on tarmac\n• Gambles wear for raw pace',
+    pace:'Base pace: dominant on loose surface, well off the pace on tarmac — the most surface-dependent car on the grid.',
     cards:['throttle','throttle','throttle','throttle','pacenotes','flick','flick','handbrake','antilag','flatcrest','flatcrest','allsurface','lunge','defend']},
   GT4:{name:'GT4',col:'var(--gt4)',tag:'tyre management',driver:'BARNES',behaviour:'gt4',
     blurb:'The endurance engine. Steady racecraft that gets stronger as the field wears out — manage the tyres, scrub the deck clean, and reel them in late.',
     feat:'• Strong late as others fade\n• Best tyre management on the grid',
+    pace:'Base pace: slowest off the line, but steadily builds and is strongest right at the flag.',
     cards:['throttle','throttle','throttle','slipstream','slipstream','sendit','tyremgmt','stintpace','conserve','readdeg','undercut','liftcoast','lunge','defend']},
 };
 
@@ -695,7 +702,7 @@ function render(){
     <div class="row">
       <div class="pos" style="color:${i===0?'var(--text)':'var(--muted)'}">${i+1}</div>
       <div class="chip" style="background:${x.col}"></div>
-      <div class="nm">${x.nm}${x.dmg>0?' <span style="color:var(--push)">⚠</span>':''}${x.slow>0?' <span style="color:var(--med)">▼'+secs(x.slow)+'</span>':''}<div class="cls">${x.cls}${x.dmg>0?' · dmg '+x.dmg:''}${x.slow>0?' · held up':''}${x.wear>=RIVAL_WEAR_PIT?' · tyres gone':''}</div>
+      <div class="nm"${x.you?'':' title="'+DECKS[x.cls].pace+'"'}>${x.nm}${x.dmg>0?' <span style="color:var(--push)">⚠</span>':''}${x.slow>0?' <span style="color:var(--med)">▼'+secs(x.slow)+'</span>':''}<div class="cls">${x.cls}${x.dmg>0?' · dmg '+x.dmg:''}${x.slow>0?' · held up':''}${x.wear>=RIVAL_WEAR_PIT?' · tyres gone':''}</div>
         <div class="bar"><i style="width:${Math.max(3,x.dist/max*100)}%;background:${x.col}"></i></div>${x.lastCard?'<div style="font-size:9px;color:var(--muted);margin-top:3px">▸ '+x.lastCard+'</div>':''}</div>
       <div class="dist mono"${x.you?' style="color:'+x.col+'"':''}>${gap}</div>
     </div>`;}).join('');
@@ -844,6 +851,7 @@ document.getElementById('picks').innerHTML=Object.keys(DECKS).map(k=>{
     <h3>${f.name}</h3>
     <p>${f.blurb}</p>
     <div class="feat" style="white-space:pre-line">${f.feat}</div>
+    <div class="feat" style="margin-top:6px;color:var(--muted);font-style:italic">${f.pace}</div>
   </div>`;
 }).join('');
 
