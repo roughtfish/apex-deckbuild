@@ -606,14 +606,13 @@ function upcomingSectors(kind){
 function remainingRaceCorners(){
   return G.track.slice(G.sec).filter(s=>s.type==='corner');
 }
-function announceEvent(typeClass,evt,outcomeText,tone){
-  log('<b>'+evt.icon+' LAP EVENT — '+evt.name+'</b> — '+evt.flavor,'push');
+function announceEvent(typeClass,evt,outcomeText,tone,label){
+  label=label||'LAP EVENT';
+  log('<b>'+evt.icon+' '+label+' — '+evt.name+'</b> — '+evt.flavor,'push');
   log('  ↳ '+outcomeText, tone==='hit'?'push':(tone==='miss'?'good':''));
   showEventCard(typeClass,evt.icon,evt.name,evt.flavor,outcomeText,tone);
 }
-function triggerLapEvent(){
-  const pool=eventPool();
-  const evt=pool[Math.random()*pool.length|0];
+function runEvent(evt,label){
   G.eventKeepUntilSec=null; // default: card resolves after this sector, unless a branch below extends it
 
   if(evt.type==='safety'){
@@ -625,12 +624,12 @@ function triggerLapEvent(){
     const outcome=evt.scope==='top3'
       ?'The podium picture bunches up — midfield and back are unaffected.'
       :'Every gap wiped out — the field is nose-to-tail.'+(evt.clearDamage?' All damage repaired too.':'');
-    announceEvent('type-safety',evt,outcome,'safety');
+    announceEvent('type-safety',evt,outcome,'safety',label);
     return;
   }
 
   if(evt.type==='flavor'){
-    announceEvent('type-flavor',evt,'No mechanical effect — just colour.','neutral');
+    announceEvent('type-flavor',evt,'No mechanical effect — just colour.','neutral',label);
     return;
   }
 
@@ -641,21 +640,21 @@ function triggerLapEvent(){
       const target=revertPool[Math.random()*revertPool.length|0];
       target.surface='smooth';delete target._eventLoose;
       G.eventKeepUntilSec=target.idx;
-      announceEvent('type-surface',evt,evt.text([target]),'neutral');
+      announceEvent('type-surface',evt,evt.text([target]),'neutral',label);
       return;
     }
     if(evt.scope==='race-all'){
       const cands=remainingRaceCorners();
       if(!cands.length)return;
       cands.forEach(sec=>{sec.grip=Math.max(1,sec.grip+evt.delta);});
-      announceEvent('type-surface',evt,evt.text(cands.length),'neutral');
+      announceEvent('type-surface',evt,evt.text(cands.length),'neutral',label);
       return;
     }
     if(evt.scope==='lap-all'){
       const cands=upcomingSectors('corner');
       if(!cands.length)return;
       cands.forEach(sec=>{sec.grip=Math.max(1,sec.grip+evt.delta);});
-      announceEvent('type-surface',evt,evt.text(cands.length),'neutral');
+      announceEvent('type-surface',evt,evt.text(cands.length),'neutral',label);
       return;
     }
     const kind=evt.sectorKind||'corner';
@@ -670,7 +669,7 @@ function triggerLapEvent(){
       else if(evt.mode==='grip'){sec.grip=Math.max(1,sec.grip+evt.delta);}
     });
     G.eventKeepUntilSec=Math.max(...chosen.map(sec=>sec.idx));
-    announceEvent('type-surface',evt,evt.text(chosen),'neutral');
+    announceEvent('type-surface',evt,evt.text(chosen),'neutral',label);
     return;
   }
 
@@ -678,7 +677,7 @@ function triggerLapEvent(){
     const r=ranking();const t=r[Math.random()*r.length|0];
     mutateRanked(t,evt.effect);
     const nm=t.you?'You':t.nm+' ('+DECKS[t.cls].name+')';
-    announceEvent('type-leader',evt,nm+' — '+evt.text+fmtDelta(evt.effect), (evt.effect.dist>0||evt.effect.dmg<0)?'miss':'hit');
+    announceEvent('type-leader',evt,nm+' — '+evt.text+fmtDelta(evt.effect), (evt.effect.dist>0||evt.effect.dmg<0)?'miss':'hit',label);
     return;
   }
 
@@ -686,24 +685,24 @@ function triggerLapEvent(){
     const r=ranking();const t=r[r.length-1];
     mutateRanked(t,evt.effect);
     const nm=t.you?'You':t.nm+' ('+DECKS[t.cls].name+')';
-    announceEvent('type-leader',evt,nm+' — '+evt.text+fmtDelta(evt.effect),'miss');
+    announceEvent('type-leader',evt,nm+' — '+evt.text+fmtDelta(evt.effect),'miss',label);
     return;
   }
 
   if(evt.type==='mostDamaged'){
     const r=ranking();let t=null,max=0;
     r.forEach(x=>{const d=x.you?G.damage:x.dmg;if(d>max){max=d;t=x;}});
-    if(!t){announceEvent('type-leader',evt,'Nobody is carrying damage — the event fizzles.','neutral');return;}
+    if(!t){announceEvent('type-leader',evt,'Nobody is carrying damage — the event fizzles.','neutral',label);return;}
     mutateRanked(t,evt.effect);
     const nm=t.you?'You':t.nm+' ('+DECKS[t.cls].name+')';
-    announceEvent('type-leader',evt,nm+' — '+evt.text+fmtDelta(evt.effect), evt.effect.dmg<0?'miss':'hit');
+    announceEvent('type-leader',evt,nm+' — '+evt.text+fmtDelta(evt.effect), evt.effect.dmg<0?'miss':'hit',label);
     return;
   }
 
   if(evt.type==='faction'){
     if(evt.special==='p2p'){
-      if(G.fk==='INDY'){G.p2p+=1;announceEvent('type-leader',evt,'Your Push-to-Pass bank gets +1 charge.','miss');}
-      else announceEvent('type-leader',evt,'No IndyCar in the field to take advantage.','neutral');
+      if(G.fk==='INDY'){G.p2p+=1;announceEvent('type-leader',evt,'Your Push-to-Pass bank gets +1 charge.','miss',label);}
+      else announceEvent('type-leader',evt,'No IndyCar in the field to take advantage.','neutral',label);
       return;
     }
     if(evt.special==='draftTrain'){
@@ -711,31 +710,31 @@ function triggerLapEvent(){
       const nascarEntries=r.filter(x=>x.cls==='NASCAR');
       let qualifier=null;
       for(const e of nascarEntries){const packSize=r.filter(o=>o!==e&&Math.abs(o.dist-e.dist)<=REACH).length;if(packSize>=2){qualifier=e;break;}}
-      if(!qualifier){announceEvent('type-leader',evt,'No NASCAR tucked into a pack to benefit.','neutral');return;}
+      if(!qualifier){announceEvent('type-leader',evt,'No NASCAR tucked into a pack to benefit.','neutral',label);return;}
       mutateRanked(qualifier,evt.effect);
       const nm=qualifier.you?'You':qualifier.nm+' ('+DECKS[qualifier.cls].name+')';
-      announceEvent('type-leader',evt,nm+' — tucks in and rides the tow.'+fmtDelta(evt.effect),'miss');
+      announceEvent('type-leader',evt,nm+' — tucks in and rides the tow.'+fmtDelta(evt.effect),'miss',label);
       return;
     }
     const matches=ranking().filter(x=>evt.list.includes(x.cls));
-    if(!matches.length){announceEvent('type-leader',evt,'No '+evt.list.join('/')+' in this field to affect.','neutral');return;}
+    if(!matches.length){announceEvent('type-leader',evt,'No '+evt.list.join('/')+' in this field to affect.','neutral',label);return;}
     matches.forEach(m=>mutateRanked(m,evt.effect));
     const names=matches.map(m=>m.you?'You':m.nm).join(', ');
-    announceEvent('type-leader',evt,names+' affected'+fmtDelta(evt.effect), (evt.effect.dist>0||evt.effect.dmg<0)?'miss':'hit');
+    announceEvent('type-leader',evt,names+' affected'+fmtDelta(evt.effect), (evt.effect.dist>0||evt.effect.dmg<0)?'miss':'hit',label);
     return;
   }
 
   if(evt.type==='pitPenalty'){
-    if(!G.lastPitCls){announceEvent('type-leader',evt,'Nobody has pitted yet — no one to review.','neutral');return;}
+    if(!G.lastPitCls){announceEvent('type-leader',evt,'Nobody has pitted yet — no one to review.','neutral',label);return;}
     const t=ranking().find(x=>x.cls===G.lastPitCls);
-    if(!t){announceEvent('type-leader',evt,'Cannot trace the last car to pit.','neutral');return;}
+    if(!t){announceEvent('type-leader',evt,'Cannot trace the last car to pit.','neutral',label);return;}
     mutateRanked(t,evt.effect);
     const nm=t.you?'You':t.nm+' ('+DECKS[t.cls].name+')';
-    announceEvent('type-leader',evt,nm+' — handed a penalty for the pit exit.'+fmtDelta(evt.effect),'hit');
+    announceEvent('type-leader',evt,nm+' — handed a penalty for the pit exit.'+fmtDelta(evt.effect),'hit',label);
     return;
   }
 
-  // default: 'leader' type (chance-based hit/miss on whoever is out front)
+  // default: 'leader' type (chance-based hit/miss on whoever is out front — pole position, for grid events)
   const leader=ranking()[0];
   const isPlayer=!!leader.you;
   const nm=isPlayer?'You':leader.nm+' ('+DECKS[leader.cls].name+')';
@@ -746,8 +745,47 @@ function triggerLapEvent(){
   if(hit&&out.dmg)bits.push('+'+out.dmg+' dmg');
   if(hit&&out.dist)bits.push('−'+out.dist+' dist');
   if(hit&&out.worn)bits.push('+'+out.worn+' worn');
-  announceEvent('type-leader',evt,nm+' — '+out.text+(bits.length?' ('+bits.join(', ')+')':''),hit?'hit':'miss');
+  announceEvent('type-leader',evt,nm+' — '+out.text+(bits.length?' ('+bits.join(', ')+')':''),hit?'hit':'miss',label);
 }
+function triggerLapEvent(){
+  const pool=eventPool();
+  runEvent(pool[Math.random()*pool.length|0],'LAP EVENT');
+}
+
+const START_EVENTS=[
+  {type:'leader', name:'Wheel Spin off the Line', icon:'🌀', chance:0.4,
+   flavor:'Pole position gets away hard off the line — maybe too hard.',
+   hit:{dmg:0,dist:2,worn:1,text:'Lights up the rear tyres and bogs down.'},
+   miss:{text:'Gets the launch just right.'}},
+  {type:'leader', name:'Jumps the Start', icon:'🚦', chance:0.25,
+   flavor:'Pole position is twitchy on the grid — a touch too keen off the line.',
+   hit:{dmg:0,dist:2,worn:0,text:'Jumps it, handed a penalty for the false start.'},
+   miss:{text:'Holds it together, away clean.'}},
+  {type:'random', name:'Stalls on the Line', icon:'🛑', effect:{dist:-5},
+   flavor:'One car stumbles off the line completely as the lights go out.',
+   text:'Stalls at the lights — an absolute nightmare start.'},
+  {type:'random', name:'Great Reaction', icon:'⚡', effect:{dist:3},
+   flavor:'One driver reads the lights perfectly and is gone before anyone else moves.',
+   text:'Nails the reaction time, gone in a flash.'},
+  {type:'flavor', name:'Clean Getaway', icon:'🟢',
+   flavor:'Every car gets off the line cleanly — a textbook start for the whole field.'},
+];
+function startEventPool(){
+  return START_EVENTS.filter(e=>!e.track||e.track===G.trackId);
+}
+function triggerStartEvent(){
+  const pool=startEventPool();
+  runEvent(pool[Math.random()*pool.length|0],'GRID EVENT');
+}
+function randomizeGrid(){
+  const slots=shuffle([{you:true},...G.rivals.map(r=>({ref:r}))]);
+  let cum=0;
+  slots.forEach((s,i)=>{
+    if(i>0)cum-=1+Math.random()*2; // 1–3 units behind the car ahead of it on the grid
+    if(s.you)G.player=cum; else s.ref.dist=cum;
+  });
+}
+
 
 function buildTrack(){
   let t=[];
@@ -776,6 +814,7 @@ function startRace(fk){
     rivals,
     logLines:[]
   };
+  randomizeGrid();
   // player tower colour follows faction
   document.documentElement.style.setProperty('--player', f.col);
   document.getElementById('select').classList.add('hide');
@@ -787,6 +826,7 @@ function startRace(fk){
   if(fk==='RALLY')log('All tarmac at the Mountain — your flicks will bite. Lean on the handbrake and send it down Conrod.','push');
   if(fk==='INDY')log('5 Push-to-Pass charges. Spend them well.','good');
   if(f.fragile)log('Fragile car — brace for The Dipper. You will ground out and take damage, just like the F1 it is.','push');
+  triggerStartEvent();
   render();
 }
 
