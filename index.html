@@ -545,6 +545,8 @@ const LAP_EVENTS=[
   // ---- PIT LANE: targets whoever pitted most recently ----
   {type:'pitPenalty', name:'Pit Lane Speeding Penalty', icon:'📟', effect:{dist:-2,worn:1},
    flavor:'Race control reviews the last pit exit and finds a speeding infringement.'},
+  {type:'arm', name:'Unsafe Release', icon:'🚧', armKind:'unsafeRelease',
+   flavor:'The pit lane is congested this lap — whoever boxes 2nd from here is at real risk of a bad release.'},
 ];
 function eventPool(){
   return LAP_EVENTS.filter(e=>!e.track || e.track===G.trackId);
@@ -617,6 +619,20 @@ function announceEvent(typeClass,evt,outcomeText,tone,label){
   log('  ↳ '+outcomeText, tone==='hit'?'push':(tone==='miss'?'good':''));
   showEventCard(typeClass,evt.icon,evt.name,evt.flavor,outcomeText,tone);
 }
+function checkUnsafeRelease(entry){
+  if(!G.unsafeReleaseArmed)return;
+  G.unsafeReleaseCount++;
+  if(G.unsafeReleaseCount!==2)return;
+  G.unsafeReleaseArmed=false;
+  const penaltyDist=5/GAP_SCALE; // a flat 5-second penalty, converted to distance units
+  const nm=entry.you?'You':entry.nm+' ('+DECKS[entry.cls].name+')';
+  if(entry.you)G.player=Math.max(0,G.player-penaltyDist);
+  else entry.dist=Math.max(0,entry.dist-penaltyDist);
+  G.eventKeepUntilSec=null;G.eventHighlight=null;
+  log('<b>🚧 LAP EVENT — Unsafe Release</b> — Released right into the path of another car in the pit lane.','push');
+  log('  ↳ '+nm+' — handed a 5-second penalty for the unsafe release. (−5.0s)','push');
+  showEventCard('type-leader','🚧','Unsafe Release','Released right into the path of another car in the pit lane.',nm+' — 5-second penalty for the unsafe release. (−5.0s)','hit');
+}
 function runEvent(evt,label){
   G.eventKeepUntilSec=null; // default: card resolves after this sector, unless a branch below extends it
   G.eventHighlight=null; // default: no corner highlight, unless a branch below sets one
@@ -636,6 +652,15 @@ function runEvent(evt,label){
 
   if(evt.type==='flavor'){
     announceEvent('type-flavor',evt,'No mechanical effect — just colour.','neutral',label);
+    return;
+  }
+
+  if(evt.type==='arm'){
+    if(evt.armKind==='unsafeRelease'){
+      G.unsafeReleaseArmed=true;
+      G.unsafeReleaseCount=0;
+      announceEvent('type-leader',evt,'The pit lane is on notice — the 2nd car to box from here risks a penalty.','neutral',label);
+    }
     return;
   }
 
@@ -861,7 +886,8 @@ function startRace(fk){
   const rivals=others.map(k=>{const d=DECKS[k];return {nm:d.driver,cls:k,col:d.col,dist:0,dmg:0,slow:0,wear:0,aggr:0.45+Math.random()*0.5,lastCard:'',fragile:!!d.fragile,behaviour:d.behaviour,justPitted:false};});
   G={
     fk, fcol:f.col, deck, draw:shuffle([...deck]), hand:[], discard:[],
-    track:buildTrack(), trackId:TRACK_ID, lastPitCls:null, eventKeepUntilSec:null, eventHighlight:null, playerJustPitted:false, sec:0,
+    track:buildTrack(), trackId:TRACK_ID, lastPitCls:null, eventKeepUntilSec:null, eventHighlight:null, playerJustPitted:false,
+    unsafeReleaseArmed:false, unsafeReleaseCount:0, sec:0,
     energy:3, maxEnergy:3, pendingEnergy:0,
     secSpeed:0, gripBonus:0, defend:false,
     powers:{versatile:false, allSurface:false, wearcut:false, ballast:false, bulletproof:false, draftfree:false}, activePowers:[],
@@ -1139,6 +1165,7 @@ function moveRivals(){
       r.dist-=cost; r.wear=0; r.dmg=0;
       G.lastPitCls=r.cls;
       r.justPitted=true;
+      checkUnsafeRelease(r);
       r.lastCard='▪ PIT STOP (−'+cost+')';
       log(r.nm+' boxes — fresh rubber, <span class="push">−'+cost+'</span>.','push');
       return;
@@ -1194,6 +1221,7 @@ function pit(){
   G.player-=pc.total;
   G.lastPitCls=G.fk;
   G.playerJustPitted=true;
+  checkUnsafeRelease({you:true});
   log('<b>BOX BOX</b> — '+DECKS[G.fk].name+' stop: crew '+pc.base+(pc.wearCost>0?' · tyres '+pc.wearCost:'')+(pc.dmgCost>0?' · repairs '+pc.dmgCost:'')+' = <span class="push">−'+pc.total+'</span> track position.','push');
   endSector(true);
 }
