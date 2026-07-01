@@ -547,6 +547,9 @@ const LAP_EVENTS=[
    flavor:'Race control reviews the last pit exit and finds a speeding infringement.'},
   {type:'arm', name:'Unsafe Release', icon:'🚧', armKind:'unsafeRelease',
    flavor:'The pit lane is congested this lap — whoever boxes 2nd from here is at real risk of a bad release.'},
+  {type:'field', name:"He's in the fence, they're both in the fence, they're all in the fence!", icon:'💥', scope:'top3', effect:{dmg:2,dist:-5},
+   flavor:'A three-car pile-up collects the entire lead group in one horrific instant.',
+   text:'goes straight into the fence.'},
 ];
 function eventPool(){
   return LAP_EVENTS.filter(e=>!e.track || e.track===G.trackId);
@@ -719,8 +722,10 @@ function runEvent(evt,label){
   }
 
   if(evt.type==='field'){
-    ranking().forEach(x=>mutateRanked(x,evt.effect));
-    announceEvent('type-leader',evt,'Every car — '+evt.text+fmtDelta(evt.effect), (evt.effect.dist>0||evt.effect.dmg<0)?'miss':'hit',label);
+    const targets=evt.scope==='top3'?ranking().slice(0,3):ranking();
+    targets.forEach(x=>mutateRanked(x,evt.effect));
+    const who=evt.scope==='top3'?'The whole top 3 — ':'Every car — ';
+    announceEvent('type-leader',evt,who+evt.text+fmtDelta(evt.effect), (evt.effect.dist>0||evt.effect.dmg<0)?'miss':'hit',label);
     return;
   }
 
