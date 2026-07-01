@@ -262,25 +262,30 @@ const CARD={
   // GT4
   tyremgmt:{name:'Tyre Whisperer',cost:1,kind:'power',text:'POWER: corners make 1 fewer Worn.'},
   stintpace:{name:'Stint Pace',cost:1,kind:'speed',text:'+2 speed for each Worn in your discard.'},
+  // added: powers for V8/NASCAR + extra GT4 signatures
+  bulletproof:{name:'Bulletproof',cost:1,kind:'power',text:'POWER: halve the distance you lose to damage each sector.'},
+  draftdisc:{name:'Draft Discipline',cost:1,kind:'power',text:()=>'POWER: Slipstream, Bump Draft and Side-Draft cost 0 for the rest of the race.'},
+  readdeg:{name:'Read the Degradation',cost:1,kind:'manage',text:'Draw 2; draw a 3rd if you hold a Worn card.'},
+  undercut:{name:'Undercut',cost:1,kind:'manage',text:'Scrub up to 3 Worn from your deck. +2 speed.'},
 };
 
 const DECKS={
   F1:{name:'F1',col:'var(--f1)',tag:'raw pace · fragile',fragile:true,driver:'VERSTRAPP',behaviour:'f1',
     blurb:'Blistering top-end speed that punishes mistakes and hates traffic — and grounds out over The Dipper. Fast, brittle, unforgiving.',
     feat:'• Huge speed, hates traffic\n• Fragile: takes Dipper damage',
-    cards:['throttle','throttle','throttle','slipstream','overtake','activeaero','boost','cleanair','qualilap','autoblip','lunge','defend']},
+    cards:['throttle','throttle','throttle','slipstream','slipstream','overtake','overtake','activeaero','boost','cleanair','qualilap','autoblip','lunge','defend']},
   V8:{name:'V8 Supercars',col:'var(--v8)',tag:'Bathurst specialist',driver:'VANGIS',behaviour:'v8',
     blurb:'Heavy, durable touring muscle built for the Mountain. Strong through corners, brilliant on long stints, happy to lean on people.',
-    feat:'• Corner-strong and durable\n• Gets stronger as tyres go off',
-    cards:['throttle','throttle','throttle','slipstream','slipstream','heeltoe','mountainmaster','leanon','conserve','enduro','trailbrake','lunge','defend']},
+    feat:'• Corner-strong and durable\n• Bulletproof shrugs off damage',
+    cards:['throttle','throttle','throttle','slipstream','slipstream','heeltoe','mountainmaster','leanon','conserve','enduro','bulletproof','trailbrake','lunge','defend']},
   BTCC:{name:'BTCC',col:'var(--btcc)',tag:'scrappy comeback',driver:'SUTTON',behaviour:'btcc',
     blurb:'Rubbing-is-racing touring cars. Thrives in the pack, turns contact into position, and fights hardest when it is behind.',
     feat:'• Comeback engine from behind\n• Pack-fighting contact passes',
-    cards:['throttle','throttle','throttle','slipstream','heeltoe','switchback','leanon','threewide','divebomb','ballast','lunge','defend']},
+    cards:['throttle','throttle','throttle','slipstream','slipstream','heeltoe','switchback','leanon','threewide','threewide','divebomb','ballast','lunge','defend']},
   NASCAR:{name:'NASCAR',col:'var(--nascar)',tag:'draft & pack',driver:'EARNHART',behaviour:'nascar',
     blurb:'Stock-car draft deck. Weak alone, terrifying in a chain — bump drafts, side-drafts and a slingshot that comes alive in traffic.',
-    feat:'• Monster in a pack\n• Slingshot from 2nd/3rd',
-    cards:['throttle','throttle','throttle','slipstream','bumpdraft','sidedraft','highline','packracing','slingshot','trailbrake','lunge','defend']},
+    feat:'• Monster in a pack\n• Draft Discipline makes drafting free',
+    cards:['throttle','throttle','throttle','slipstream','slipstream','bumpdraft','sidedraft','highline','packracing','slingshot','draftdisc','trailbrake','lunge','defend']},
   INDY:{name:'IndyCar',col:'var(--indy)',tag:'all-rounder',driver:'DIXON',behaviour:'indy',
     blurb:'The versatile boost deck. Finite Push-to-Pass charges give huge tempo swings, and a setup Power makes surfaces irrelevant — but the boost runs out.',
     feat:'• 5× Push-to-Pass charges\n• Versatile Setup negates surfaces',
@@ -290,9 +295,9 @@ const DECKS={
     feat:'• Dominant on loose, weak on tarmac\n• Gambles wear for raw pace',
     cards:['throttle','throttle','throttle','throttle','pacenotes','flick','flick','handbrake','antilag','flatcrest','flatcrest','allsurface','lunge','defend']},
   GT4:{name:'GT4',col:'var(--gt4)',tag:'tyre management',driver:'BARNES',behaviour:'gt4',
-    blurb:'The endurance engine. Steady racecraft that gets stronger as the field wears out — manage the tyres and reel them in late.',
+    blurb:'The endurance engine. Steady racecraft that gets stronger as the field wears out — manage the tyres, scrub the deck clean, and reel them in late.',
     feat:'• Strong late as others fade\n• Best tyre management on the grid',
-    cards:['throttle','throttle','throttle','throttle','slipstream','slipstream','sendit','trailbrake','tyremgmt','stintpace','liftcoast','lunge','defend']},
+    cards:['throttle','throttle','throttle','slipstream','slipstream','sendit','tyremgmt','stintpace','conserve','readdeg','undercut','liftcoast','lunge','defend']},
 };
 
 const LAPS=2;
@@ -334,7 +339,7 @@ function startRace(fk){
     track:buildTrack(), sec:0,
     energy:3, maxEnergy:3, pendingEnergy:0,
     secSpeed:0, gripBonus:0, defend:false,
-    powers:{versatile:false, allSurface:false, wearcut:false, ballast:false}, activePowers:[],
+    powers:{versatile:false, allSurface:false, wearcut:false, ballast:false, bulletproof:false, draftfree:false}, activePowers:[],
     p2p: fk==='INDY'?5:0,
     pacenotesPlayed:false,
     playerFragile: !!f.fragile,
@@ -378,14 +383,16 @@ function reduceNearestAhead(n){const a=G.rivals.filter(r=>r.dist>G.player).sort(
 function removeWorn(n){let c=0;const strip=z=>{for(let i=z.length-1;i>=0&&c<n;i--){if(z[i].worn){z.splice(i,1);c++;}}};strip(G.discard);strip(G.draw);strip(G.hand);return c;}
 function nearestAhead(){return G.rivals.filter(r=>r.dist>G.player).sort((a,b)=>a.dist-b.dist)[0]||null;}
 function secs(d){return (d*GAP_SCALE).toFixed(1)+'s';}
+function effCost(c){return (G.powers.draftfree && (c.key==='slipstream'||c.key==='bumpdraft'||c.key==='sidedraft'))?0:c.cost;}
 
 function playCard(uid){
   const i=G.hand.findIndex(c=>c.uid===uid);if(i<0)return;
   const c=G.hand[i];
   if(c.worn)return;
   if(c.key==='p2p' && G.p2p<=0){log('No Push-to-Pass charges left.','push');return;}
-  if(c.cost>G.energy)return;
-  G.energy-=c.cost;
+  const cost=effCost(c);
+  if(cost>G.energy)return;
+  G.energy-=cost;
   const s=curSector();
   const loose=s.surface==='loose', corner=s.type==='corner';
   let toDiscard=true;
@@ -456,6 +463,10 @@ function playCard(uid){
     case 'slingshot':{const p=myPosition();if(p===2||p===3){G.secSpeed+=7;log('Slingshot → +7!','good');passNearestAhead();}else{G.secSpeed+=3;log('Slingshot → +3 (out of position).','');}break;}
     // GT4
     case 'tyremgmt': G.powers.wearcut=true; pushPower('Tyre Whisperer'); log('POWER: Tyre Whisperer — corners shed 1 less Worn.','good'); toDiscard=false; break;
+    case 'bulletproof': G.powers.bulletproof=true; pushPower('Bulletproof'); log('POWER: Bulletproof — damage drags you half as much.','good'); toDiscard=false; break;
+    case 'draftdisc': G.powers.draftfree=true; pushPower('Draft Discipline'); log('POWER: Draft Discipline — Slipstream, Bump Draft and Side-Draft now cost 0.','good'); toDiscard=false; break;
+    case 'readdeg':{drawOne();drawOne();if(G.hand.some(x=>x.worn)){drawOne();log('Read the degradation — drew 3 (tyres talking).','good');}else log('Read the degradation — drew 2.','good');break;}
+    case 'undercut':{const c2=removeWorn(3);G.secSpeed+=2;log('Undercut — scrubbed '+c2+' Worn, +2.','good');break;}
   }
   G.hand.splice(i,1);
   if(toDiscard){c._played=true;G.discard.push(c);}
@@ -476,7 +487,7 @@ function endSector(coastThrough=false){
   let gained=raw-penalty+bonus+ballastBonus;
   if(coastThrough)gained=0;
   let dmgDrag=0;
-  if(!coastThrough && G.damage>0){dmgDrag=Math.min(gained,G.damage);gained-=dmgDrag;}
+  if(!coastThrough && G.damage>0){dmgDrag=Math.min(gained,G.damage);if(G.powers.bulletproof)dmgDrag=Math.ceil(dmgDrag/2);gained-=dmgDrag;}
 
   const over=corner?Math.max(0,G.secSpeed-limit):0;
   let wornMade=over;
@@ -683,10 +694,11 @@ function render(){
   document.getElementById('hand').innerHTML=G.hand.map(c=>{
     const dead=c.worn;
     const noCharge=c.key==='p2p'&&G.p2p<=0;
-    const unaff=!dead&&(c.cost>G.energy||noCharge);
+    const ec=dead?c.cost:effCost(c);
+    const unaff=!dead&&(ec>G.energy||noCharge);
     const ico=c.worn?'tyre':c.kind==='grip'?'grip':c.kind==='def'?'defend':c.kind==='manage'?'manage':c.kind==='power'?'power':c.kind==='boost'?'boost':'speed';
     return `<div class="pcard ${c.worn?'wcard':''} ${c.kind==='power'?'power-c':''} ${dead?'dead':''} ${unaff?'unaffordable':''}" onclick="playCard('${c.uid}')">
-      <div class="cost">${c.cost}</div>
+      <div class="cost">${ec}</div>
       <div class="ico">${ico}${noCharge?' · 0 left':''}</div>
       <div class="cn">${c.name}</div>
       <div class="ct">${typeof c.text==='function'?c.text():c.text}</div>
