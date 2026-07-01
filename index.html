@@ -596,7 +596,7 @@ function mutateRanked(entry,d){
 function fmtDelta(d){
   if(!d)return'';
   const bits=[];
-  if(d.dist)bits.push((d.dist>0?'+':'')+d.dist+' dist');
+  if(d.dist)bits.push((d.dist>0?'+':'')+secs(d.dist));
   if(d.dmg)bits.push((d.dmg>0?'+':'')+d.dmg+' dmg');
   if(d.worn)bits.push((d.worn>0?'+':'')+d.worn+' worn');
   return bits.length?' ('+bits.join(', ')+')':'';
@@ -759,7 +759,7 @@ function runEvent(evt,label){
   if(hit)applyEventPenalty(isPlayer,isPlayer?null:leader,out.dmg||0,out.dist||0,out.worn||0);
   const bits=[];
   if(hit&&out.dmg)bits.push('+'+out.dmg+' dmg');
-  if(hit&&out.dist)bits.push('−'+out.dist+' dist');
+  if(hit&&out.dist)bits.push('−'+secs(out.dist));
   if(hit&&out.worn)bits.push('+'+out.worn+' worn');
   announceEvent('type-leader',evt,nm+' — '+out.text+(bits.length?' ('+bits.join(', ')+')':''),hit?'hit':'miss',label);
 }
