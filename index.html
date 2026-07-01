@@ -27,6 +27,8 @@
   .sub{color:var(--muted);font-size:12px;letter-spacing:2px;text-transform:uppercase;margin:2px 0 16px}
   .grid{display:grid;grid-template-columns:1.1fr 1fr;gap:14px}
   @media(max-width:760px){.grid{grid-template-columns:1fr}}
+  .grid3{display:grid;grid-template-columns:0.85fr 1.15fr 0.85fr;gap:14px;align-items:start}
+  @media(max-width:980px){.grid3{grid-template-columns:1fr}}
   .card-panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px}
   .label{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:10px}
 
@@ -152,7 +154,7 @@
   .banner h2{font-size:40px;font-weight:900;margin:0 0 6px;letter-spacing:-1px}
   .banner p{color:var(--muted);margin:0 0 16px}
   .mapwrap{display:flex;justify-content:center;padding:4px 0}
-  svg.track{width:100%;max-width:300px;height:auto}
+  svg.track{width:100%;max-width:440px;height:auto}
   .tpath{fill:none;stroke:#2A333E;stroke-width:11;stroke-linejoin:round;stroke-linecap:round}
   .tpath2{fill:none;stroke:#0E141A;stroke-width:5;stroke-linejoin:round;stroke-linecap:round}
   .tick{fill:#46515F}
@@ -171,21 +173,7 @@
 
   <!-- GAME -->
   <div id="game" class="hide">
-    <div class="card-panel" style="margin-bottom:14px">
-      <div class="label">circuit map — mount panorama, bathurst · cars live by gap</div>
-      <div class="mapwrap">
-        <svg class="track" viewBox="35 35 190 330" id="trackSvg">
-          <path id="trackPath" class="tpath" d="M 60 340 L 145 347 C 159 349 168 343 167 329 L 175 252 C 176 244 182 240 190 242 C 200 244 207 235 206 221 C 207 199 213 189 210 174 C 208 149 205 124 197 105 C 192 90 182 80 168 78 C 157 77 153 85 146 83 C 138 81 140 70 131 68 C 122 66 125 56 115 56 C 103 56 92 50 85 61 C 79 71 74 130 74 190 C 74 240 76 282 80 305 C 82 317 78 322 70 326 C 62 330 57 334 60 340 Z"/>
-          <path class="tpath2" d="M 60 340 L 145 347 C 159 349 168 343 167 329 L 175 252 C 176 244 182 240 190 242 C 200 244 207 235 206 221 C 207 199 213 189 210 174 C 208 149 205 124 197 105 C 192 90 182 80 168 78 C 157 77 153 85 146 83 C 138 81 140 70 131 68 C 122 66 125 56 115 56 C 103 56 92 50 85 61 C 79 71 74 130 74 190 C 74 240 76 282 80 305 C 82 317 78 322 70 326 C 62 330 57 334 60 340 Z"/>
-          <path id="pitLanePath" class="pitlane" fill="none"/>
-          <g id="trackTicks"></g>
-          <g id="trackHighlight"></g>
-          <circle id="sectorMarker" r="9" fill="none" stroke="#00E5D1" stroke-width="2" cx="0" cy="0"/>
-          <g id="cars"></g>
-        </svg>
-      </div>
-    </div>
-    <div class="grid">
+    <div class="grid3">
       <div class="card-panel">
         <div class="label">live timing — lap <span id="lapNo" class="mono">1</span>/<span id="lapTot" class="mono">3</span> · sector <span id="secNo" class="mono">1</span>/<span id="secTot" class="mono">18</span></div>
         <div id="tower"></div>
@@ -195,6 +183,21 @@
           <span>WORN <b id="wornCt" class="mono" style="color:var(--push)">0</b></span>
         </div>
         <div class="status" id="status"></div>
+      </div>
+
+      <div class="card-panel">
+        <div class="label">circuit map — mount panorama, bathurst · cars live by gap</div>
+        <div class="mapwrap">
+          <svg class="track" viewBox="35 35 190 330" id="trackSvg">
+            <path id="trackPath" class="tpath" d="M 60 340 L 145 347 C 159 349 168 343 167 329 L 175 252 C 176 244 182 240 190 242 C 200 244 207 235 206 221 C 207 199 213 189 210 174 C 208 149 205 124 197 105 C 192 90 182 80 168 78 C 157 77 153 85 146 83 C 138 81 140 70 131 68 C 122 66 125 56 115 56 C 103 56 92 50 85 61 C 79 71 74 130 74 190 C 74 240 76 282 80 305 C 82 317 78 322 70 326 C 62 330 57 334 60 340 Z"/>
+            <path class="tpath2" d="M 60 340 L 145 347 C 159 349 168 343 167 329 L 175 252 C 176 244 182 240 190 242 C 200 244 207 235 206 221 C 207 199 213 189 210 174 C 208 149 205 124 197 105 C 192 90 182 80 168 78 C 157 77 153 85 146 83 C 138 81 140 70 131 68 C 122 66 125 56 115 56 C 103 56 92 50 85 61 C 79 71 74 130 74 190 C 74 240 76 282 80 305 C 82 317 78 322 70 326 C 62 330 57 334 60 340 Z"/>
+            <path id="pitLanePath" class="pitlane" fill="none"/>
+            <g id="trackTicks"></g>
+            <g id="trackHighlight"></g>
+            <circle id="sectorMarker" r="9" fill="none" stroke="#00E5D1" stroke-width="2" cx="0" cy="0"/>
+            <g id="cars"></g>
+          </svg>
+        </div>
       </div>
 
       <div class="card-panel">
