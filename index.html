@@ -97,6 +97,8 @@
   .event-card.type-surface{border-color:var(--loose)}
   .event-card.type-safety{border-color:var(--med)}
   .event-card.type-flavor{border-color:var(--line)}
+  .event-arc{animation:arcPulse 1.2s ease-in-out infinite;filter:drop-shadow(0 0 3px currentColor)}
+  @keyframes arcPulse{0%,100%{opacity:.55}50%{opacity:1}}
   .event-card .ec-outcome.hit{color:var(--push)}
   .event-card .ec-outcome.miss{color:var(--soft)}
   .event-card .ec-outcome.neutral{color:var(--loose)}
@@ -175,6 +177,7 @@
           <path id="trackPath" class="tpath" d="M 60 340 L 145 347 C 159 349 168 343 167 329 L 175 252 C 176 244 182 240 190 242 C 200 244 207 235 206 221 C 207 199 213 189 210 174 C 208 149 205 124 197 105 C 192 90 182 80 168 78 C 157 77 153 85 146 83 C 138 81 140 70 131 68 C 122 66 125 56 115 56 C 103 56 92 50 85 61 C 79 71 74 130 74 190 C 74 240 76 282 80 305 C 82 317 78 322 70 326 C 62 330 57 334 60 340 Z"/>
           <path class="tpath2" d="M 60 340 L 145 347 C 159 349 168 343 167 329 L 175 252 C 176 244 182 240 190 242 C 200 244 207 235 206 221 C 207 199 213 189 210 174 C 208 149 205 124 197 105 C 192 90 182 80 168 78 C 157 77 153 85 146 83 C 138 81 140 70 131 68 C 122 66 125 56 115 56 C 103 56 92 50 85 61 C 79 71 74 130 74 190 C 74 240 76 282 80 305 C 82 317 78 322 70 326 C 62 330 57 334 60 340 Z"/>
           <g id="trackTicks"></g>
+          <g id="trackHighlight"></g>
           <circle id="sectorMarker" r="9" fill="none" stroke="#00E5D1" stroke-width="2" cx="0" cy="0"/>
           <g id="cars"></g>
         </svg>
@@ -614,6 +617,7 @@ function announceEvent(typeClass,evt,outcomeText,tone,label){
 }
 function runEvent(evt,label){
   G.eventKeepUntilSec=null; // default: card resolves after this sector, unless a branch below extends it
+  G.eventHighlight=null; // default: no corner highlight, unless a branch below sets one
 
   if(evt.type==='safety'){
     const r=ranking();
@@ -640,6 +644,7 @@ function runEvent(evt,label){
       const target=revertPool[Math.random()*revertPool.length|0];
       target.surface='smooth';delete target._eventLoose;
       G.eventKeepUntilSec=target.idx;
+      G.eventHighlight={indices:[target.idx],color:'var(--player)',reason:evt.name+': '+evt.text([target])};
       announceEvent('type-surface',evt,evt.text([target]),'neutral',label);
       return;
     }
@@ -669,6 +674,8 @@ function runEvent(evt,label){
       else if(evt.mode==='grip'){sec.grip=Math.max(1,sec.grip+evt.delta);}
     });
     G.eventKeepUntilSec=Math.max(...chosen.map(sec=>sec.idx));
+    const hlColor = evt.mode==='loose' ? 'var(--loose)' : (evt.delta>0 ? 'var(--soft)' : 'var(--push)');
+    G.eventHighlight={indices:chosen.map(sec=>sec.idx),color:hlColor,reason:evt.name+': '+evt.text(chosen)};
     announceEvent('type-surface',evt,evt.text(chosen),'neutral',label);
     return;
   }
@@ -852,7 +859,7 @@ function startRace(fk){
   const rivals=others.map(k=>{const d=DECKS[k];return {nm:d.driver,cls:k,col:d.col,dist:0,dmg:0,slow:0,wear:0,aggr:0.45+Math.random()*0.5,lastCard:'',fragile:!!d.fragile,behaviour:d.behaviour};});
   G={
     fk, fcol:f.col, deck, draw:shuffle([...deck]), hand:[], discard:[],
-    track:buildTrack(), trackId:TRACK_ID, lastPitCls:null, eventKeepUntilSec:null, sec:0,
+    track:buildTrack(), trackId:TRACK_ID, lastPitCls:null, eventKeepUntilSec:null, eventHighlight:null, sec:0,
     energy:3, maxEnergy:3, pendingEnergy:0,
     secSpeed:0, gripBonus:0, defend:false,
     powers:{versatile:false, allSurface:false, wearcut:false, ballast:false, bulletproof:false, draftfree:false}, activePowers:[],
@@ -1019,6 +1026,7 @@ function endSector(coastThrough=false){
   if(G.eventKeepUntilSec==null || G.sec>G.eventKeepUntilSec){
     dismissEventCard();
     G.eventKeepUntilSec=null;
+    G.eventHighlight=null;
   }
   const s=curSector();
   const corner=s.type==='corner', loose=s.surface==='loose', straight=s.type==='straight';
@@ -1339,6 +1347,25 @@ function updateMap(){
   const mp=path.getPointAtLength(sweep*L);
   const marker=document.getElementById('sectorMarker');
   marker.setAttribute('cx',mp.x.toFixed(1));marker.setAttribute('cy',mp.y.toFixed(1));
+
+  const hlEl=document.getElementById('trackHighlight');
+  if(hlEl){
+    if(G.eventHighlight){
+      const esc=t=>String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+      hlEl.innerHTML=G.eventHighlight.indices.map(idx=>{
+        const localK=((idx%SPL)+SPL)%SPL;
+        const startLen=(localK/SPL)*L, endLen=((localK+1)/SPL)*L;
+        const steps=10;let d='';
+        for(let i=0;i<=steps;i++){
+          const len=((startLen+(endLen-startLen)*(i/steps))%L+L)%L;
+          const p=path.getPointAtLength(len);
+          d+=(i===0?'M':'L')+p.x.toFixed(1)+' '+p.y.toFixed(1)+' ';
+        }
+        return '<path d="'+d+'" stroke="'+G.eventHighlight.color+'" color="'+G.eventHighlight.color+'" stroke-width="6" fill="none" stroke-linecap="round" opacity="0.85" class="event-arc"><title>'+esc(G.eventHighlight.reason)+'</title></path>';
+      }).join('');
+    } else hlEl.innerHTML='';
+  }
+
   const r=ranking();const lead=r[0].dist;const PXU=1.6;
   let out='';
   r.forEach((car,i)=>{
