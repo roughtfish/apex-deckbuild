@@ -307,6 +307,8 @@ const LEAN_PEN=4;     // Lean On Them: pace a disrupted rival loses next sector 
 const SIDE_PEN=3;     // Side-Draft: pace a disrupted rival loses next sector (distance units)
 // base pit-stop cost by category, reflecting real-life crew speed (F1 fastest, NASCAR slowest)
 const PITBASE={F1:4, BTCC:5, INDY:5, V8:6, RALLY:6, GT4:7, NASCAR:8};
+const WEARTAX=0.12;        // pace a rival loses per unit of accumulated tyre wear
+const RIVAL_WEAR_PIT=7;    // wear at which a rival will box if it reaches the pit straight
 // Mount Panorama, Bathurst — 6.2 km, all tarmac. Grip values reflect each corner's character:
 // low grip = tight/technical/easy to overdrive; straights carry the long flat-out sections.
 const BATHURST=[
@@ -335,7 +337,7 @@ function startRace(fk){
   const f=DECKS[fk];
   const deck=f.cards.map((k,i)=>({key:k,...CARD[k],uid:i+'_'+k}));
   const others=shuffle(Object.keys(DECKS).filter(k=>k!==fk)).slice(0,3);
-  const rivals=others.map(k=>{const d=DECKS[k];return {nm:d.driver,cls:k,col:d.col,dist:0,dmg:0,slow:0,lastCard:'',fragile:!!d.fragile,behaviour:d.behaviour};});
+  const rivals=others.map(k=>{const d=DECKS[k];return {nm:d.driver,cls:k,col:d.col,dist:0,dmg:0,slow:0,wear:0,aggr:0.45+Math.random()*0.5,lastCard:'',fragile:!!d.fragile,behaviour:d.behaviour};});
   G={
     fk, fcol:f.col, deck, draw:shuffle([...deck]), hand:[], discard:[],
     track:buildTrack(), sec:0,
@@ -538,6 +540,7 @@ function rivalCard(r,s){
   const near=[...G.rivals,{dist:G.player}].some(o=>o!==r&&Math.abs(o.dist-r.dist)<=REACH);
   const behind=r.dist<G.player;
   const pick=a=>a[Math.random()*a.length|0];
+  if(r.wear>=RIVAL_WEAR_PIT) return pick(['managing the tyres','tyres going off','conserving']);
   switch(r.behaviour){
     case 'f1':
       if(r.dmg>0) return pick(['nursing the damage','Fuel Save','holding station']);
@@ -572,8 +575,18 @@ function rivalCard(r,s){
 function moveRivals(){
   const progress=G.sec/G.track.length;
   const s=curSector();const corner=s.type==='corner',straight=s.type==='straight';
+  const leadDist=Math.max(G.player,...G.rivals.map(r=>r.dist));
   G.rivals.forEach(r=>{
+    // pit decision — only at the pit straight (not the start line)
+    if(s.pit && G.sec>0 && (r.wear>=RIVAL_WEAR_PIT || r.dmg>=5)){
+      const cost=(PITBASE[r.cls]||6)+Math.round(r.wear*0.4)+r.dmg;
+      r.dist-=cost; r.wear=0; r.dmg=0;
+      r.lastCard='▪ PIT STOP (−'+cost+')';
+      log(r.nm+' boxes — fresh rubber, <span class="push">−'+cost+'</span>.','push');
+      return;
+    }
     r.lastCard=rivalCard(r,s);
+    // base pace by category behaviour
     let pace=5+Math.random()*1.5;
     switch(r.behaviour){
       case 'f1': pace=8-progress*5+Math.random()*1.5; break;
@@ -584,9 +597,17 @@ function moveRivals(){
       case 'rally': pace=(s.surface==='loose'?7:4)+Math.random()*1.2; break;
       case 'gt4': pace=5+progress*1+Math.random()*1.2; break;
     }
+    // personality: push harder when chasing (costs tyres), ease off when leading
+    const behind=r.dist<leadDist-1;
+    const push=r.aggr+(behind?0.12:0);          // ~0.45..1.07
+    pace*=0.98+push*0.2;
+    // surface handicap + taxes
     if(s.surface==='loose' && r.behaviour!=='rally')pace-=2;
+    pace-=r.wear*WEARTAX;
     pace-=r.dmg*0.5;
     if(r.slow>0){pace-=r.slow;log(r.nm+' held up — <span class="push">−'+secs(r.slow)+'</span> this sector.','push');r.slow=0;}
+    // tyre wear accrues — more when pushing, more through corners
+    r.wear+=0.35+push*0.4+(corner?0.5:0);
     const before=r.dist;
     r.dist+=Math.max(0,pace);
     if(G.defend && r.dist>G.player && before<G.player)r.dist=G.player-0.1;
@@ -642,7 +663,7 @@ function render(){
     <div class="row">
       <div class="pos" style="color:${i===0?'var(--text)':'var(--muted)'}">${i+1}</div>
       <div class="chip" style="background:${x.col}"></div>
-      <div class="nm">${x.nm}${x.dmg>0?' <span style="color:var(--push)">⚠</span>':''}${x.slow>0?' <span style="color:var(--med)">▼'+secs(x.slow)+'</span>':''}<div class="cls">${x.cls}${x.dmg>0?' · dmg '+x.dmg:''}${x.slow>0?' · held up':''}</div>
+      <div class="nm">${x.nm}${x.dmg>0?' <span style="color:var(--push)">⚠</span>':''}${x.slow>0?' <span style="color:var(--med)">▼'+secs(x.slow)+'</span>':''}<div class="cls">${x.cls}${x.dmg>0?' · dmg '+x.dmg:''}${x.slow>0?' · held up':''}${x.wear>=RIVAL_WEAR_PIT?' · tyres gone':''}</div>
         <div class="bar"><i style="width:${Math.max(3,x.dist/max*100)}%;background:${x.col}"></i></div>${x.lastCard?'<div style="font-size:9px;color:var(--muted);margin-top:3px">▸ '+x.lastCard+'</div>':''}</div>
       <div class="dist mono"${x.you?' style="color:'+x.col+'"':''}>${gap}</div>
     </div>`;}).join('');
