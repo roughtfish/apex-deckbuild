@@ -336,6 +336,74 @@ const BATHURST=[
   {name:"Murray's Corner",type:'corner',grip:5,surface:'smooth'},
 ];
 const SPL=BATHURST.length;
+const LAP_EVENTS=[
+  {type:'leader', name:'Light Showers', chance:0.35,
+   flavor:'The sky opens right as the leader starts the lap — first through the wet, first to find the limit.',
+   hit:{dmg:3,dist:4,worn:0,text:'Caught out on the greasy line — clips the barrier.'},
+   miss:{text:'Reads the conditions perfectly, through clean.'}},
+  {type:'leader', name:'Debris on Track', chance:0.4,
+   flavor:'Yellow flags — there is debris scattered across the racing line, and the leader gets there first.',
+   hit:{dmg:0,dist:2,worn:2,text:'Runs straight over it, tyres take the damage.'},
+   miss:{text:'Spots it in time and threads around.'}},
+  {type:'leader', name:'Track Limits Warning', chance:0.5,
+   flavor:'Race control is watching this lap closely, and the leader is first under the microscope.',
+   hit:{dmg:0,dist:3,worn:0,text:'Runs wide, handed a time penalty.'},
+   miss:{text:'Stays inside the white lines, no drama.'}},
+  {type:'surface', name:'Gravel on Track',
+   flavor:'A truck has spread gravel across one of the corners for the rest of this lap.',
+   text:sec=>'Gravel across '+sec.name+' — tarmac cars lose grip there, Rally setups thrive.'},
+  {type:'safety', name:'Safety Car — "No Michael, no!"',
+   flavor:'Yellow flags everywhere — the safety car is out and the whole field bunches up behind the leader.'},
+];
+function applyEventPenalty(isPlayer,rivalRef,dmg,dist,worn){
+  if(isPlayer){
+    if(dmg)G.damage+=dmg;
+    if(dist)G.player=Math.max(0,G.player-dist);
+    if(worn)makeWorn(worn);
+  } else {
+    if(dmg)rivalRef.dmg+=dmg;
+    if(dist)rivalRef.dist=Math.max(0,rivalRef.dist-dist);
+    if(worn)rivalRef.wear+=worn*0.6;
+  }
+}
+function triggerLapEvent(){
+  const evt=LAP_EVENTS[Math.random()*LAP_EVENTS.length|0];
+  if(evt.type==='safety'){
+    const r=ranking();
+    const leadDist=r[0].dist;
+    r.forEach((x,i)=>{
+      const newDist=Math.max(0,leadDist-i*0.15);
+      if(x.you)G.player=newDist; else x.dist=newDist;
+    });
+    log('<b>🚨 LAP EVENT — '+evt.name+'</b> — '+evt.flavor,'push');
+    log('  ↳ The whole field is nose-to-tail again — every gap wiped out.','push');
+    return;
+  }
+  if(evt.type==='surface'){
+    // find corner sectors remaining in the lap that just started
+    const candidates=[];
+    for(let k=0;k<SPL;k++){const sec=G.track[G.sec+k];if(sec && sec.type==='corner' && sec.surface!=='loose')candidates.push(sec);}
+    if(!candidates.length)return; // nothing to change this lap (shouldn't normally happen)
+    const target=candidates[Math.random()*candidates.length|0];
+    target.surface='loose';
+    log('<b>🪨 LAP EVENT — '+evt.name+'</b> — '+evt.flavor,'push');
+    log('  ↳ '+evt.text(target),'push');
+    return;
+  }
+  const leader=ranking()[0];
+  const isPlayer=!!leader.you;
+  const nm=isPlayer?'You':leader.nm+' ('+DECKS[leader.cls].name+')';
+  log('<b>🌧 LAP EVENT — '+evt.name+'</b> — '+evt.flavor,'push');
+  const hit=Math.random()<evt.chance;
+  const out=hit?evt.hit:evt.miss;
+  if(hit)applyEventPenalty(isPlayer,isPlayer?null:leader,out.dmg||0,out.dist||0,out.worn||0);
+  const bits=[];
+  if(hit&&out.dmg)bits.push('+'+out.dmg+' dmg');
+  if(hit&&out.dist)bits.push('−'+out.dist+' dist');
+  if(hit&&out.worn)bits.push('+'+out.worn+' worn');
+  log('  ↳ '+nm+' — '+out.text+(bits.length?' <span class="push">('+bits.join(', ')+')</span>':''),hit?'push':'good');
+}
+
 function buildTrack(){
   let t=[];
   for(let l=0;l<LAPS;l++)t=t.concat(BATHURST.map(s=>({...s})));
@@ -562,6 +630,7 @@ function endSector(coastThrough=false){
   G.secSpeed=0;G.gripBonus=0;G.defend=false;
   G.sec++;
   if(G.sec>=G.track.length)return finish();
+  if(G.sec%SPL===0)triggerLapEvent();
   G.energy=G.maxEnergy+G.pendingEnergy;G.pendingEnergy=0;
   replenish();
   discardToLimit();
