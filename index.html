@@ -382,7 +382,7 @@ const LAP_EVENTS=[
    miss:{text:'Spots it in time and threads around.'}},
   {type:'leader', name:'Track Limits Warning', icon:'🚩', chance:0.5,
    flavor:'Race control is watching this lap closely, and the leader is first under the microscope.',
-   hit:{dmg:0,dist:3,worn:0,text:'Runs wide, handed a time penalty.'},
+   hit:{dmg:0,dist:3,worn:1,text:'Runs wide across the gravel trap edge, handed a time penalty.'},
    miss:{text:'Stays inside the white lines, no drama.'}},
   {type:'leader', name:'Dust From the Dipper', icon:'💨', chance:0.35, track:'BATHURST',
    flavor:'The Dipper kicks up dust as the leader crests it — a Bathurst-only blind spot.',
@@ -394,7 +394,7 @@ const LAP_EVENTS=[
    miss:{text:'Hops clear with a foot to spare.'}},
   {type:'leader', name:'Kerb Strike', icon:'🚧', chance:0.4,
    flavor:'A big kerb sits right on the racing line, and the leader is first to find it.',
-   hit:{dmg:2,dist:2,worn:0,text:'Clips it hard — suspension knock.'},
+   hit:{dmg:2,dist:2,worn:1,text:'Clips it hard — suspension knock, and a nick to the tyre.'},
    miss:{text:'Rides the kerb perfectly, no drama.'}},
   {type:'leader', name:'Fuel Pressure Warning', icon:'⛽', chance:0.35,
    flavor:'A fuel pressure light flickers on right as the leader crosses the line.',
@@ -495,50 +495,50 @@ const LAP_EVENTS=[
    flavor:'A car horn has been stuck on in the pit lane for several minutes. Nobody can find the source.'},
 
   // ---- RANDOM: hits any single car, no bias toward position ----
-  {type:'random', name:'Fuel Flow Sensor Glitch', icon:'🔧', effect:{dist:-3},
+  {type:'random', name:'Fuel Flow Sensor Glitch', icon:'🔧', effect:{dist:-3,worn:1},
    flavor:'A random fuel flow sensor starts throwing false readings somewhere in the field.',
-   text:'Fuel flow glitch forces a lift.'},
-  {type:'random', name:'Perfect Racing Line Clear', icon:'✨', effect:{dist:3},
+   text:'Fuel flow glitch forces a lift and a labored stretch of driving.'},
+  {type:'random', name:'Perfect Racing Line Clear', icon:'✨', effect:{dist:3,worn:-1},
    flavor:'One car finds the racing line completely clean and clear, for once.',
-   text:'Nails the line perfectly, no traffic at all.'},
+   text:'Nails the line perfectly, easy on the tyres too.'},
 
   // ---- LAST PLACE: comeback lever for whoever's at the back ----
-  {type:'last', name:'Long Green Run', icon:'🟢', effect:{dist:4},
+  {type:'last', name:'Long Green Run', icon:'🟢', effect:{dist:4,worn:-1},
    flavor:'Whoever is running last catches a completely clean stretch of track.',
-   text:'Finds a long green run and makes the most of it.'},
-  {type:'last', name:'Underdog Tow', icon:'🤝', effect:{dist:2},
+   text:'Finds a long green run, easy on the tyres too.'},
+  {type:'last', name:'Underdog Tow', icon:'🤝', effect:{dist:2,worn:-1},
    flavor:'The car at the back of the field catches a lucky tow off nobody in particular.',
-   text:'Picks up a small tow out of nowhere.'},
+   text:'Picks up a small tow out of nowhere, saving the tyres a little.'},
   {type:'last', name:'Free Tyre Check', icon:'🔍', effect:{worn:-2},
    flavor:'The pit wall talks the car at the back through easing off just enough to save some rubber.',
    text:'Backs off just enough to save the tyres.'},
 
   // ---- MOST DAMAGED: swings toward or against whoever's hurting most ----
-  {type:'mostDamaged', name:'Spare Parts Delivered', icon:'🔩', effect:{dmg:-2},
+  {type:'mostDamaged', name:'Spare Parts Delivered', icon:'🔩', effect:{dmg:-2,worn:-1},
    flavor:'A quick trackside patch-up gets doled out to whoever is carrying the most damage.',
-   text:'Gets a trackside patch-up on the bodywork.'},
-  {type:'mostDamaged', name:'Wounded Duck', icon:'🦆', effect:{dmg:2},
+   text:'Gets a trackside patch-up on the bodywork, fresh rubber thrown in too.'},
+  {type:'mostDamaged', name:'Wounded Duck', icon:'🦆', effect:{dmg:2,worn:1},
    flavor:'Whoever is already carrying the most damage catches another knock in the same spot.',
-   text:'Takes another hit in the same damaged spot.'},
+   text:'Takes another hit in the same damaged spot, tyres taking the strain too.'},
 
   // ---- FACTION-TARGETED: hits an archetype, wherever it sits in the field ----
-  {type:'faction', name:'Drizzle, Not Downpour', icon:'🌦️', list:['RALLY'], effect:{dist:2},
+  {type:'faction', name:'Drizzle, Not Downpour', icon:'🌦️', list:['RALLY'], effect:{dist:2,worn:-1},
    flavor:'A light drizzle is just enough to wake the loose-surface setups up.'},
-  {type:'faction', name:'Debris at a Chicane', icon:'🧱', list:['F1'], effect:{dist:-2},
+  {type:'faction', name:'Debris at a Chicane', icon:'🧱', list:['F1'], effect:{dist:-2,dmg:1,worn:1},
    flavor:'A chicane full of debris punishes the high-downforce cars hardest.'},
-  {type:'faction', name:'Heavy Car Struggles on Cold Tyres', icon:'🥶', list:['NASCAR','V8'], effect:{dist:-2},
+  {type:'faction', name:'Heavy Car Struggles on Cold Tyres', icon:'🥶', list:['NASCAR','V8'], effect:{dist:-2,worn:2},
    flavor:'The heavier cars are still hunting for temperature in their tyres this lap.'},
-  {type:'faction', name:'Nimble Cars Thread the Needle', icon:'🐭', list:['GT4','BTCC'], effect:{dist:2},
+  {type:'faction', name:'Nimble Cars Thread the Needle', icon:'🐭', list:['GT4','BTCC'], effect:{dist:2,worn:-1},
    flavor:'The lighter, nimbler cars find a gap the bigger machinery could never fit through.'},
-  {type:'faction', name:'Marbles Off-Line', icon:'⚫', list:['V8','BTCC'], effect:{dist:2},
-   flavor:'Rubber marbles build up off the racing line — the contact-happy cars know exactly how to use it.'},
+  {type:'faction', name:'Marbles Off-Line', icon:'⚫', list:['V8','BTCC'], effect:{dist:2,worn:1},
+   flavor:'Rubber marbles build up off the racing line — the contact-happy cars know exactly how to use it, at a cost to their own tyres.'},
   {type:'faction', name:'Push-to-Pass Zone Extended', icon:'⚡', special:'p2p',
    flavor:'Race control extends the boost zone for this lap only.'},
-  {type:'faction', name:'Draft Train Forms', icon:'🚂', special:'draftTrain', effect:{dist:3},
+  {type:'faction', name:'Draft Train Forms', icon:'🚂', special:'draftTrain', effect:{dist:3,worn:-1},
    flavor:'A proper draft train forms up on the straight, and whoever is tucked in benefits most.'},
 
   // ---- PIT LANE: targets whoever pitted most recently ----
-  {type:'pitPenalty', name:'Pit Lane Speeding Penalty', icon:'📟', effect:{dist:-2},
+  {type:'pitPenalty', name:'Pit Lane Speeding Penalty', icon:'📟', effect:{dist:-2,worn:1},
    flavor:'Race control reviews the last pit exit and finds a speeding infringement.'},
 ];
 function eventPool(){
@@ -674,10 +674,19 @@ function runEvent(evt,label){
   }
 
   if(evt.type==='random'){
-    const r=ranking();const t=r[Math.random()*r.length|0];
+    let r=ranking();
+    if(evt.excludePole)r=r.slice(1);
+    if(!r.length)return;
+    const t=r[Math.random()*r.length|0];
     mutateRanked(t,evt.effect);
     const nm=t.you?'You':t.nm+' ('+DECKS[t.cls].name+')';
     announceEvent('type-leader',evt,nm+' — '+evt.text+fmtDelta(evt.effect), (evt.effect.dist>0||evt.effect.dmg<0)?'miss':'hit',label);
+    return;
+  }
+
+  if(evt.type==='field'){
+    ranking().forEach(x=>mutateRanked(x,evt.effect));
+    announceEvent('type-leader',evt,'Every car — '+evt.text+fmtDelta(evt.effect), (evt.effect.dist>0||evt.effect.dmg<0)?'miss':'hit',label);
     return;
   }
 
@@ -761,12 +770,54 @@ const START_EVENTS=[
    flavor:'Pole position is twitchy on the grid — a touch too keen off the line.',
    hit:{dmg:0,dist:2,worn:0,text:'Jumps it, handed a penalty for the false start.'},
    miss:{text:'Holds it together, away clean.'}},
+  {type:'leader', name:'Wet Formation Lap', icon:'🌦️', chance:0.35,
+   flavor:'Pole struggles to get heat into the tyres on the way to the grid.',
+   hit:{dmg:0,dist:0,worn:1,text:'Never gets heat into the tyres before the lights go out.'},
+   miss:{text:'Tyres come in perfectly by the time it matters.'}},
+  {type:'leader', name:'Kerb Hop at Turn One', icon:'🚧', chance:0.4,
+   flavor:'Pole is first to the apex, and first to find the kerb.',
+   hit:{dmg:1,dist:1,worn:1,text:'Hops the kerb hard — knock to the car and the tyres.'},
+   miss:{text:'Rides it clean.'}},
+  {type:'leader', name:'Clutch Bites Hard', icon:'🦵', chance:0.3,
+   flavor:'Pole gets a fierce launch that is almost impossible to control.',
+   hit:{dmg:0,dist:0,worn:1,text:'A near-uncontrollable launch scrubs the rear tyres.'},
+   miss:{text:'The launch is strong and perfectly controlled.'}},
+
   {type:'random', name:'Stalls on the Line', icon:'🛑', effect:{dist:-5},
    flavor:'One car stumbles off the line completely as the lights go out.',
    text:'Stalls at the lights — an absolute nightmare start.'},
   {type:'random', name:'Great Reaction', icon:'⚡', effect:{dist:3},
    flavor:'One driver reads the lights perfectly and is gone before anyone else moves.',
    text:'Nails the reaction time, gone in a flash.'},
+  {type:'random', name:'Wheelspin Down the Field', icon:'💨', effect:{dist:-2,worn:2},
+   flavor:'It is not just pole fighting for grip off the line.',
+   text:'Lights up the rears just as badly as pole might — and can least afford it.'},
+  {type:'random', name:'Cold Tyres Bite Someone', icon:'🥶', effect:{dist:-1,worn:2},
+   flavor:'Someone pushes before the rubber is anywhere near ready.',
+   text:'Picks up premature wear pushing on cold tyres.'},
+  {type:'random', name:'Brake Lock-Up Into Turn One', icon:'🔥', effect:{dist:-2,worn:1},
+   flavor:'The first big brake zone catches somebody out.',
+   text:'Locks up and flat-spots a tyre into the first corner.'},
+  {type:'random', name:'Wheel-to-Wheel Contact', icon:'💥', effect:{dmg:2},
+   flavor:'Genuine contact breaks out somewhere in the opening scramble.',
+   text:'Trades paint in the fight for position.'},
+  {type:'random', name:'First Corner Squeeze', icon:'🧱', excludePole:true, effect:{dmg:1,dist:-2},
+   flavor:'Someone fighting through the pack gets squeezed wide at Turn One.',
+   text:'Squeezed wide, clips something on the way through.'},
+  {type:'random', name:'Sees a Gap, Takes It', icon:'✨', excludePole:true, effect:{dist:2},
+   flavor:'Someone back in the pack spots a gap into the first corner and commits.',
+   text:'Finds a hole into Turn One and takes it clean.'},
+
+  {type:'field', name:'Standing Water on the Grid', icon:'💧', effect:{worn:1},
+   flavor:'A damp grid catches the whole field out a little on the way to the line.',
+   text:'everyone loses a touch of launch traction.'},
+  {type:'field', name:'Gravel Kicked Up at the Start', icon:'🪨', effect:{worn:1},
+   flavor:'Dust and stones off the line work their way into every set of tyres.',
+   text:'the whole field picks up a little early wear.'},
+
+  {type:'faction', name:'Heavy Cars Bog Down', icon:'🥶', list:['NASCAR','V8'], effect:{dist:-2,worn:1},
+   flavor:'All that weight fights the heavy cars off the line, not just their launch speed.'},
+
   {type:'flavor', name:'Clean Getaway', icon:'🟢',
    flavor:'Every car gets off the line cleanly — a textbook start for the whole field.'},
 ];
