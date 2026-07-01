@@ -91,6 +91,8 @@
     cursor:pointer;transition:transform .12s,border-color .12s;position:relative;user-select:none}
   .pcard:hover{transform:translateY(-3px);border-color:var(--player)}
   .pcard.dead,.pcard.unaffordable{opacity:.45;cursor:not-allowed}
+  .pcard.discard-choice{border-color:var(--push);cursor:pointer;opacity:1}
+  .pcard.discard-choice:hover{transform:translateY(-3px);border-color:var(--push);box-shadow:0 0 0 1px var(--push)}
   .pcard.dead{border-style:dashed}
   .pcard.dead:hover,.pcard.unaffordable:hover{transform:none;border-color:var(--line)}
   .pcard .cost{position:absolute;top:6px;right:6px;width:18px;height:18px;border-radius:50%;background:var(--player);
@@ -309,6 +311,7 @@ const SIDE_PEN=3;     // Side-Draft: pace a disrupted rival loses next sector (d
 const PITBASE={F1:4, BTCC:5, INDY:5, V8:6, RALLY:6, GT4:7, NASCAR:8};
 const WEARTAX=0.12;        // pace a rival loses per unit of accumulated tyre wear
 const RIVAL_WEAR_PIT=7;    // wear at which a rival will box if it reaches the pit straight
+const HAND_LIMIT=5;        // if a turn's bonus draws push you over, discard down to this after your go
 // Mount Panorama, Bathurst — 6.2 km, all tarmac. Grip values reflect each corner's character:
 // low grip = tight/technical/easy to overdrive; straights carry the long flat-out sections.
 const BATHURST=[
@@ -348,6 +351,8 @@ function startRace(fk){
     pacenotesPlayed:false,
     playerFragile: !!f.fragile,
     player:0, damage:0,
+    playedThisTurn:0,
+    discardMode:false, discardNeeded:0,
     rivals,
     logLines:[]
   };
@@ -367,9 +372,27 @@ function startRace(fk){
 
 function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a}
 function drawHand(){G.hand=[];for(let i=0;i<5;i++)drawOne();}
+function replenish(){for(let i=0;i<G.playedThisTurn;i++)drawOne();G.playedThisTurn=0;}
 function drawOne(){
   if(G.draw.length===0){if(G.discard.length===0)return;G.draw=shuffle([...G.discard]);G.discard=[];}
   if(G.draw.length)G.hand.push(G.draw.pop());
+}
+function discardToLimit(){
+  const over=G.hand.length-HAND_LIMIT;
+  if(over<=0){G.discardMode=false;G.discardNeeded=0;return;}
+  G.discardMode=true;
+  G.discardNeeded=over;
+  log('Over the '+HAND_LIMIT+'-card limit — choose '+over+' to discard.','push');
+}
+function discardCard(uid){
+  if(!G.discardMode)return;
+  const i=G.hand.findIndex(c=>c.uid===uid);if(i<0)return;
+  const c=G.hand.splice(i,1)[0];
+  G.discard.push(c);
+  G.discardNeeded--;
+  log('Discarded '+c.name+'.','');
+  if(G.discardNeeded<=0){G.discardMode=false;G.discardNeeded=0;}
+  render();
 }
 function makeWorn(n){for(let i=0;i<n;i++)G.discard.push({key:'worn',name:'Worn Tyre',cost:0,worn:true,kind:'worn',text:'Dead weight. Bin it at the pits or with Lift & Coast.',uid:'worn'+Math.random()});}
 function curSector(){return G.track[G.sec];}
@@ -390,12 +413,14 @@ function secs(d){return (d*GAP_SCALE).toFixed(1)+'s';}
 function effCost(c){return (G.powers.draftfree && (c.key==='slipstream'||c.key==='bumpdraft'||c.key==='sidedraft'))?0:c.cost;}
 
 function playCard(uid){
+  if(G.discardMode){discardCard(uid);return;}
   const i=G.hand.findIndex(c=>c.uid===uid);if(i<0)return;
   const c=G.hand[i];
   if(c.worn)return;
   if(c.key==='p2p' && G.p2p<=0){log('No Push-to-Pass charges left.','push');return;}
   const cost=effCost(c);
   if(cost>G.energy)return;
+  const handLenBefore=G.hand.length;
   G.energy-=cost;
   const s=curSector();
   const loose=s.surface==='loose', corner=s.type==='corner';
@@ -474,6 +499,7 @@ function playCard(uid){
   }
   G.hand.splice(i,1);
   if(toDiscard){c._played=true;G.discard.push(c);}
+  G.playedThisTurn+=Math.max(1,handLenBefore-G.hand.length);
   render();
 }
 
@@ -525,13 +551,13 @@ function endSector(coastThrough=false){
 
   moveRivals();
 
-  G.hand.forEach(c=>{if(!c._played)G.discard.push(c)});
   G.discard.forEach(c=>delete c._played);
   G.secSpeed=0;G.gripBonus=0;G.defend=false;
   G.sec++;
   if(G.sec>=G.track.length)return finish();
   G.energy=G.maxEnergy+G.pendingEnergy;G.pendingEnergy=0;
-  drawHand();
+  replenish();
+  discardToLimit();
   render();
 }
 
@@ -626,10 +652,13 @@ function pitCost(){
   return {base,worn,wearCost,dmgCost,total:base+wearCost+dmgCost};
 }
 function pit(){
+  if(G.discardMode){log('Choose your discards first.','push');render();return;}
   if(!curSector().pit || G.sec===0){log('Pit lane closed — you can only box passing the pits, and not off the start line.','push');render();return;}
   const pc=pitCost();
   const purge=z=>z.filter(c=>!c.worn);
+  const handBefore=G.hand.length;
   G.draw=purge(G.draw);G.discard=purge(G.discard);G.hand=purge(G.hand);
+  G.playedThisTurn+=handBefore-G.hand.length;   // fresh tyres replace any Worn purged from hand
   G.damage=0;
   G.player-=pc.total;
   log('<b>BOX BOX</b> — '+DECKS[G.fk].name+' stop: crew '+pc.base+(pc.wearCost>0?' · tyres '+pc.wearCost:'')+(pc.dmgCost>0?' · repairs '+pc.dmgCost:'')+' = <span class="push">−'+pc.total+'</span> track position.','push');
@@ -722,25 +751,33 @@ function render(){
   document.getElementById('dmgBig').textContent = G.damage===0?'No damage':'Damaged';
   document.getElementById('dmgSmall').textContent = G.damage===0?'Bodywork clean. Risky cards and The Dipper can hurt you.':'Losing '+G.damage+' distance every sector (≈'+(G.damage*GAP_SCALE).toFixed(2)+'s) until you box and repair.';
   const atPit=curSector().pit && G.sec>0, pitBtn=document.getElementById('pitBtn');
-  pitBtn.disabled=!atPit;
+  pitBtn.disabled=!atPit || G.discardMode;
   pitBtn.textContent = !atPit ? 'Box · pit straight only' : ('Box · −'+pitCost().total+(G.damage>0?' (repairs)':''));
+  const endBtn=document.getElementById('endBtn');
+  endBtn.disabled=G.discardMode;
+  endBtn.textContent=G.discardMode?'Discard '+G.discardNeeded+' first':'End sector ▸';
 
   const en=document.getElementById('energy');en.innerHTML='';
   const shown=Math.max(G.maxEnergy,G.energy);
   for(let i=0;i<shown;i++){const p=document.createElement('div');p.className='pip'+(i<G.energy?' on':'');en.appendChild(p);}
   document.getElementById('enLabel').textContent=G.energy;
 
+  const handLabel=document.querySelector('#handPanel .label');
+  if(handLabel)handLabel.innerHTML=G.discardMode
+    ? '<span style="color:var(--push)">over the '+HAND_LIMIT+'-card limit — click '+G.discardNeeded+' to discard</span>'
+    : 'your hand · <span id="enLabel">'+G.energy+'</span> energy';
+
   document.getElementById('hand').innerHTML=G.hand.map(c=>{
     const dead=c.worn;
     const noCharge=c.key==='p2p'&&G.p2p<=0;
     const ec=dead?c.cost:effCost(c);
-    const unaff=!dead&&(ec>G.energy||noCharge);
+    const unaff=!dead&&!G.discardMode&&(ec>G.energy||noCharge);
     const ico=c.worn?'tyre':c.kind==='grip'?'grip':c.kind==='def'?'defend':c.kind==='manage'?'manage':c.kind==='power'?'power':c.kind==='boost'?'boost':'speed';
-    return `<div class="pcard ${c.worn?'wcard':''} ${c.kind==='power'?'power-c':''} ${dead?'dead':''} ${unaff?'unaffordable':''}" onclick="playCard('${c.uid}')">
+    return `<div class="pcard ${c.worn?'wcard':''} ${c.kind==='power'?'power-c':''} ${dead?'dead':''} ${unaff?'unaffordable':''} ${G.discardMode?'discard-choice':''}" onclick="playCard('${c.uid}')">
       <div class="cost">${ec}</div>
       <div class="ico">${ico}${noCharge?' · 0 left':''}</div>
       <div class="cn">${c.name}</div>
-      <div class="ct">${typeof c.text==='function'?c.text():c.text}</div>
+      <div class="ct">${G.discardMode?'Click to discard':(typeof c.text==='function'?c.text():c.text)}</div>
     </div>`;
   }).join('');
 
@@ -810,7 +847,7 @@ document.getElementById('picks').innerHTML=Object.keys(DECKS).map(k=>{
   </div>`;
 }).join('');
 
-document.getElementById('endBtn').onclick=()=>endSector(false);
+document.getElementById('endBtn').onclick=()=>{if(G.discardMode){log('Choose your discards first.','push');render();return;}endSector(false);};
 document.getElementById('pitBtn').onclick=()=>pit();
 document.getElementById('againBtn').onclick=()=>{
   document.documentElement.style.setProperty('--player','#00E5D1');
