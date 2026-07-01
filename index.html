@@ -797,7 +797,7 @@ let G;
 function startRace(fk){
   const f=DECKS[fk];
   const deck=f.cards.map((k,i)=>({key:k,...CARD[k],uid:i+'_'+k}));
-  const others=shuffle(Object.keys(DECKS).filter(k=>k!==fk)).slice(0,3);
+  const others=shuffle(Object.keys(DECKS).filter(k=>k!==fk));
   const rivals=others.map(k=>{const d=DECKS[k];return {nm:d.driver,cls:k,col:d.col,dist:0,dmg:0,slow:0,wear:0,aggr:0.45+Math.random()*0.5,lastCard:'',fragile:!!d.fragile,behaviour:d.behaviour};});
   G={
     fk, fcol:f.col, deck, draw:shuffle([...deck]), hand:[], discard:[],
