@@ -99,6 +99,7 @@
   .event-card.type-flavor{border-color:var(--line)}
   .event-arc{animation:arcPulse 1.2s ease-in-out infinite;filter:drop-shadow(0 0 3px currentColor)}
   @keyframes arcPulse{0%,100%{opacity:.55}50%{opacity:1}}
+  .pitlane{stroke:#5A6675;stroke-width:3;stroke-dasharray:3 3;opacity:.8}
   .event-card .ec-outcome.hit{color:var(--push)}
   .event-card .ec-outcome.miss{color:var(--soft)}
   .event-card .ec-outcome.neutral{color:var(--loose)}
@@ -176,6 +177,7 @@
         <svg class="track" viewBox="35 35 190 330" id="trackSvg">
           <path id="trackPath" class="tpath" d="M 60 340 L 145 347 C 159 349 168 343 167 329 L 175 252 C 176 244 182 240 190 242 C 200 244 207 235 206 221 C 207 199 213 189 210 174 C 208 149 205 124 197 105 C 192 90 182 80 168 78 C 157 77 153 85 146 83 C 138 81 140 70 131 68 C 122 66 125 56 115 56 C 103 56 92 50 85 61 C 79 71 74 130 74 190 C 74 240 76 282 80 305 C 82 317 78 322 70 326 C 62 330 57 334 60 340 Z"/>
           <path class="tpath2" d="M 60 340 L 145 347 C 159 349 168 343 167 329 L 175 252 C 176 244 182 240 190 242 C 200 244 207 235 206 221 C 207 199 213 189 210 174 C 208 149 205 124 197 105 C 192 90 182 80 168 78 C 157 77 153 85 146 83 C 138 81 140 70 131 68 C 122 66 125 56 115 56 C 103 56 92 50 85 61 C 79 71 74 130 74 190 C 74 240 76 282 80 305 C 82 317 78 322 70 326 C 62 330 57 334 60 340 Z"/>
+          <path id="pitLanePath" class="pitlane" fill="none"/>
           <g id="trackTicks"></g>
           <g id="trackHighlight"></g>
           <circle id="sectorMarker" r="9" fill="none" stroke="#00E5D1" stroke-width="2" cx="0" cy="0"/>
@@ -856,10 +858,10 @@ function startRace(fk){
   const f=DECKS[fk];
   const deck=f.cards.map((k,i)=>({key:k,...CARD[k],uid:i+'_'+k}));
   const others=shuffle(Object.keys(DECKS).filter(k=>k!==fk));
-  const rivals=others.map(k=>{const d=DECKS[k];return {nm:d.driver,cls:k,col:d.col,dist:0,dmg:0,slow:0,wear:0,aggr:0.45+Math.random()*0.5,lastCard:'',fragile:!!d.fragile,behaviour:d.behaviour};});
+  const rivals=others.map(k=>{const d=DECKS[k];return {nm:d.driver,cls:k,col:d.col,dist:0,dmg:0,slow:0,wear:0,aggr:0.45+Math.random()*0.5,lastCard:'',fragile:!!d.fragile,behaviour:d.behaviour,justPitted:false};});
   G={
     fk, fcol:f.col, deck, draw:shuffle([...deck]), hand:[], discard:[],
-    track:buildTrack(), trackId:TRACK_ID, lastPitCls:null, eventKeepUntilSec:null, eventHighlight:null, sec:0,
+    track:buildTrack(), trackId:TRACK_ID, lastPitCls:null, eventKeepUntilSec:null, eventHighlight:null, playerJustPitted:false, sec:0,
     energy:3, maxEnergy:3, pendingEnergy:0,
     secSpeed:0, gripBonus:0, defend:false,
     powers:{versatile:false, allSurface:false, wearcut:false, ballast:false, bulletproof:false, draftfree:false}, activePowers:[],
@@ -1028,6 +1030,8 @@ function endSector(coastThrough=false){
     G.eventKeepUntilSec=null;
     G.eventHighlight=null;
   }
+  G.rivals.forEach(r=>r.justPitted=false); // safe — moveRivals sets fresh ones later this same call if a rival boxes now
+  if(!coastThrough)G.playerJustPitted=false; // preserve the flag through the render right after the player's own pit call
   const s=curSector();
   const corner=s.type==='corner', loose=s.surface==='loose', straight=s.type==='straight';
   const limit=corner?s.grip+G.gripBonus:999;
@@ -1134,6 +1138,7 @@ function moveRivals(){
       const cost=(PITBASE[r.cls]||6)+Math.round(r.wear*0.4)+r.dmg;
       r.dist-=cost; r.wear=0; r.dmg=0;
       G.lastPitCls=r.cls;
+      r.justPitted=true;
       r.lastCard='▪ PIT STOP (−'+cost+')';
       log(r.nm+' boxes — fresh rubber, <span class="push">−'+cost+'</span>.','push');
       return;
@@ -1188,12 +1193,13 @@ function pit(){
   G.damage=0;
   G.player-=pc.total;
   G.lastPitCls=G.fk;
+  G.playerJustPitted=true;
   log('<b>BOX BOX</b> — '+DECKS[G.fk].name+' stop: crew '+pc.base+(pc.wearCost>0?' · tyres '+pc.wearCost:'')+(pc.dmgCost>0?' · repairs '+pc.dmgCost:'')+' = <span class="push">−'+pc.total+'</span> track position.','push');
   endSector(true);
 }
 
 function ranking(){
-  const all=[{nm:'YOU ('+DECKS[G.fk].name+')',cls:G.fk,col:G.fcol,dist:G.player,dmg:G.damage,slow:0,you:true},...G.rivals];
+  const all=[{nm:'YOU ('+DECKS[G.fk].name+')',cls:G.fk,col:G.fcol,dist:G.player,dmg:G.damage,slow:0,you:true,justPitted:G.playerJustPitted},...G.rivals];
   return all.sort((a,b)=>b.dist-a.dist);
 }
 
@@ -1320,6 +1326,7 @@ function resolveCol(c){
   return c;
 }
 let mapInit=false;
+let pitLanePts=[];
 function setupMap(){
   const path=document.getElementById('trackPath');if(!path)return;
   const L=path.getTotalLength();
@@ -1337,6 +1344,23 @@ function setupMap(){
   // sector centre dots at (k+0.5)/SPL
   for(let k=0;k<SPL;k++){const p=path.getPointAtLength(((k+0.5)/SPL)*L);html+='<circle cx="'+p.x.toFixed(1)+'" cy="'+p.y.toFixed(1)+'" r="2" class="tick"/>';}
   document.getElementById('trackTicks').innerHTML=html;
+
+  // pit lane: a short spur running parallel to the Pit Straight (sector 0), offset off the racing line
+  const OFF=13, STEPS=8;
+  pitLanePts=[];
+  for(let i=0;i<=STEPS;i++){
+    const frac=(i/STEPS)/SPL; // covers sector 0 only (the pit straight)
+    const len=frac*L;
+    const p=path.getPointAtLength(len);
+    const a=path.getPointAtLength(((len-1)%L+L)%L);
+    const b=path.getPointAtLength((len+1)%L);
+    let dx=b.x-a.x, dy=b.y-a.y; const m=Math.hypot(dx,dy)||1; dx/=m; dy/=m;
+    const nx=-dy, ny=dx;
+    pitLanePts.push({x:p.x+nx*OFF, y:p.y+ny*OFF});
+  }
+  const pl=document.getElementById('pitLanePath');
+  if(pl)pl.setAttribute('d', pitLanePts.map((p,i)=>(i===0?'M':'L')+p.x.toFixed(1)+' '+p.y.toFixed(1)).join(' '));
+
   mapInit=true;
 }
 function updateMap(){
@@ -1367,16 +1391,24 @@ function updateMap(){
   }
 
   const r=ranking();const lead=r[0].dist;const PXU=1.6;
-  let out='';
+  let out='';let pittedIdx=0;
   r.forEach((car,i)=>{
-    const gap=lead-car.dist;
-    let off=Math.max(8*i,gap*PXU);off=Math.min(off,L*0.45);
-    let len=((sweep*L-off)%L+L)%L;
-    const p=path.getPointAtLength(len);
+    const inPit=car.justPitted && pitLanePts.length>0;
+    let p;
+    if(inPit){
+      p=pitLanePts[Math.min(pitLanePts.length-1, pittedIdx*2)];
+      pittedIdx++;
+    } else {
+      const gap=lead-car.dist;
+      let off=Math.max(8*i,gap*PXU);off=Math.min(off,L*0.45);
+      let len=((sweep*L-off)%L+L)%L;
+      p=path.getPointAtLength(len);
+    }
     const fill=resolveCol(car.col);
     const rad=i===0?5.5:4.5;
-    out+='<circle cx="'+p.x.toFixed(1)+'" cy="'+p.y.toFixed(1)+'" r="'+rad+'" fill="'+fill+'" stroke="'+(car.you?'#fff':'rgba(0,0,0,.45)')+'" stroke-width="'+(car.you?2:1)+'"/>';
-    if(car.dmg>0)out+='<text x="'+p.x.toFixed(1)+'" y="'+(p.y-7).toFixed(1)+'" text-anchor="middle" font-size="10" fill="#FF453A">⚠</text>';
+    out+='<circle cx="'+p.x.toFixed(1)+'" cy="'+p.y.toFixed(1)+'" r="'+rad+'" fill="'+fill+'" stroke="'+(inPit?'#FFD60A':(car.you?'#fff':'rgba(0,0,0,.45)'))+'" stroke-width="'+(inPit?2.5:(car.you?2:1))+'"'+(inPit?' stroke-dasharray="2,1.5"':'')+'/>';
+    if(inPit)out+='<text x="'+p.x.toFixed(1)+'" y="'+(p.y-9).toFixed(1)+'" text-anchor="middle" font-size="6.5" fill="#FFD60A" font-weight="900">PIT</text>';
+    else if(car.dmg>0)out+='<text x="'+p.x.toFixed(1)+'" y="'+(p.y-7).toFixed(1)+'" text-anchor="middle" font-size="10" fill="#FF453A">⚠</text>';
     if(car.you)out+='<text x="'+p.x.toFixed(1)+'" y="'+(p.y+14).toFixed(1)+'" text-anchor="middle" font-size="7" fill="#fff" font-family="Roboto Mono, monospace">YOU</text>';
   });
   document.getElementById('cars').innerHTML=out;
