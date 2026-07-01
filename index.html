@@ -227,21 +227,21 @@ const CARD={
   hybrid:{name:'Hybrid Deploy',cost:1,kind:'boost',text:'+3 speed. Start next sector with +1 energy.'},
   restart:{name:'Restart Master',cost:1,kind:'speed',text:'+5 speed if you are NOT leading (else +2).'},
   reds:{name:'Firestone Reds',cost:1,kind:'speed',text:'+5 speed, make 2 Worn (soft alternate tyre).'},
-  versatile:{name:'Versatile Setup',cost:1,kind:'power',text:'POWER: ignore loose-surface penalty for the rest of the race.'},
+  versatile:{name:'Versatile Setup',cost:1,kind:'power',text:'POWER: ignore loose-surface penalty, but −1 on every straight (a compromise setup).'},
   // Rally
   pacenotes:{name:'Pacenotes',cost:1,kind:'manage',text:'Draw 2. Makes your next Flat Over Crest safe.'},
   flick:{name:'Scandinavian Flick',cost:1,kind:'grip',text:'LOOSE corner: +5, no wear. SMOOTH: +2 and make 2 Worn.'},
   handbrake:{name:'Handbrake Turn',cost:1,kind:'boost',text:'Tight corner (grip ≤5): +5 and pass. Otherwise +2.'},
   antilag:{name:'Anti-Lag',cost:0,kind:'boost',text:'+2 energy this sector. Make 1 Worn.'},
   flatcrest:{name:'Flat Over Crest',cost:2,kind:'speed',text:'+7 speed. Make 3 Worn unless you played Pacenotes this race.'},
-  allsurface:{name:'All-Surface',cost:1,kind:'power',text:'POWER: ignore loose penalty, +2 speed on every loose sector.'},
+  allsurface:{name:'All-Surface',cost:1,kind:'power',text:'POWER: ignore loose penalty and +2 on loose sectors, but −2 on every smooth sector.'},
   // F1
   overtake:{name:'Overtake Mode',cost:1,kind:'boost',text:()=>'On a straight with a rival within '+secs(REACH)+' ahead: +5 and pass. Else +2.'},
   activeaero:{name:'Active Aero',cost:1,kind:'speed',text:'+5 on a straight, +1 in a corner (low-drag mode).'},
   boost:{name:'Boost Mode',cost:1,kind:'boost',text:'+4 speed, deploy anywhere.'},
   cleanair:{name:'Clean Air',cost:1,kind:'speed',text:()=>'+6 if no rival within '+secs(REACH)+' ahead, else +1 (hates traffic).'},
   qualilap:{name:'Qualifying Lap',cost:2,kind:'speed',text:'+8 speed. Make 2 Worn. Glass cannon.'},
-  autoblip:{name:'Auto-Blip',cost:1,kind:'power',text:'POWER: corners make 1 fewer Worn (paddle-shift).'},
+  autoblip:{name:'Auto-Blip',cost:1,kind:'power',text:'POWER: corners make 1 fewer Worn, but −1 speed per corner (smoother, gentler).'},
   // V8 Supercars
   heeltoe:{name:'Heel & Toe',cost:1,kind:'grip',text:'Corner: +3, no wear — but +0 if you hold a Worn (missed shift).'},
   mountainmaster:{name:'Mountain Master',cost:1,kind:'speed',text:'+3 speed, +3 more in a corner.'},
@@ -252,7 +252,7 @@ const CARD={
   switchback:{name:'Switchback',cost:1,kind:'boost',text:'Rival just ahead → +5 and cut back to pass. Else +2.'},
   threewide:{name:'Three Wide',cost:1,kind:'speed',text:'+6 if 2+ rivals within reach, else +2.'},
   divebomb:{name:'Dive Bomb',cost:2,kind:'boost',text:'Corner: +6, pass a rival, make 2 Worn.'},
-  ballast:{name:'Success Ballast',cost:0,kind:'power',text:'POWER: +3 each sector while NOT leading; nothing while you lead.'},
+  ballast:{name:'Success Ballast',cost:0,kind:'power',text:'POWER: +3 each sector while behind, but −2 while you lead.'},
   // NASCAR
   bumpdraft:{name:'Bump Draft',cost:1,kind:'boost',text:()=>'On a straight with a rival within '+secs(REACH)+' ahead: +4 and draw. Else +2.'},
   sidedraft:{name:'Side-Draft',cost:1,kind:'speed',text:()=>'Straight + rival ahead: +4 and cost them ~'+secs(SIDE_PEN)+' of pace next sector. Else +2.'},
@@ -260,11 +260,11 @@ const CARD={
   packracing:{name:'Pack Racing',cost:1,kind:'speed',text:'+2 speed for each rival within reach.'},
   slingshot:{name:'Slingshot',cost:2,kind:'boost',text:'If 2nd or 3rd: +7 and pass. Else +3.'},
   // GT4
-  tyremgmt:{name:'Tyre Whisperer',cost:1,kind:'power',text:'POWER: corners make 1 fewer Worn.'},
+  tyremgmt:{name:'Tyre Whisperer',cost:1,kind:'power',text:'POWER: corners make 1 fewer Worn, but −1 speed per corner.'},
   stintpace:{name:'Stint Pace',cost:1,kind:'speed',text:'+2 speed for each Worn in your discard.'},
   // added: powers for V8/NASCAR + extra GT4 signatures
-  bulletproof:{name:'Bulletproof',cost:1,kind:'power',text:'POWER: halve the distance you lose to damage each sector.'},
-  draftdisc:{name:'Draft Discipline',cost:1,kind:'power',text:()=>'POWER: Slipstream, Bump Draft and Side-Draft cost 0 for the rest of the race.'},
+  bulletproof:{name:'Bulletproof',cost:1,kind:'power',text:'POWER: halve the distance you lose to damage, but −1 on every straight (heavy car).'},
+  draftdisc:{name:'Draft Discipline',cost:1,kind:'power',text:()=>'POWER: Slipstream, Bump Draft and Side-Draft cost 0, but −2 whenever you are in clear air (no rival within '+secs(REACH)+' ahead).'},
   readdeg:{name:'Read the Degradation',cost:1,kind:'manage',text:'Draw 2; draw a 3rd if you hold a Worn card.'},
   undercut:{name:'Undercut',cost:1,kind:'manage',text:'Scrub up to 3 Worn from your deck. +2 speed.'},
 };
@@ -475,16 +475,24 @@ function playCard(uid){
 
 function endSector(coastThrough=false){
   const s=curSector();
-  const corner=s.type==='corner', loose=s.surface==='loose';
+  const corner=s.type==='corner', loose=s.surface==='loose', straight=s.type==='straight';
   const limit=corner?s.grip+G.gripBonus:999;
   let raw=G.secSpeed+(s.type==='straight'?s.base:0);
 
-  let penalty=0, bonus=0;
+  // loose-surface penalty (unless a setup power ignores it)
+  let penalty=0;
   if(loose && !G.powers.versatile && !G.powers.allSurface) penalty=Math.min(raw,3);
-  if(loose && G.powers.allSurface) bonus=2;
-  let ballastBonus=0;
-  if(G.powers.ballast && notLeading()) ballastBonus=3;
-  let gained=raw-penalty+bonus+ballastBonus;
+
+  // double-edged power adjustments — each has an upside and a matching downside
+  let padj=0; const padjNotes=[];
+  if(G.powers.allSurface){ if(loose){padj+=2;padjNotes.push('all-surface +2 (loose)');} else {padj-=2;padjNotes.push('all-surface −2 (smooth)');} }
+  if(G.powers.versatile && straight){ padj-=1;padjNotes.push('versatile −1 (straight)'); }
+  if(G.powers.bulletproof && straight){ padj-=1;padjNotes.push('bulletproof −1 (straight)'); }
+  if(G.powers.wearcut && corner){ padj-=1;padjNotes.push('wear-save −1 (corner)'); }
+  if(G.powers.draftfree && !rivalAhead()){ padj-=2;padjNotes.push('draft discipline −2 (clear air)'); }
+  if(G.powers.ballast){ if(notLeading()){padj+=3;padjNotes.push('ballast +3 (from behind)');} else {padj-=2;padjNotes.push('ballast −2 (leading)');} }
+
+  let gained=Math.max(0, raw-penalty+padj);
   if(coastThrough)gained=0;
   let dmgDrag=0;
   if(!coastThrough && G.damage>0){dmgDrag=Math.min(gained,G.damage);if(G.powers.bulletproof)dmgDrag=Math.ceil(dmgDrag/2);gained-=dmgDrag;}
@@ -502,8 +510,7 @@ function endSector(coastThrough=false){
     log('<b>'+s.name+'</b> (straight): +'+gained+' dist.','');
   }
   if(penalty>0)log('  ↳ loose surface cost you '+penalty+' — no setup for it.','loose');
-  if(bonus>0)log('  ↳ all-surface setup: +'+bonus+' on the rough.','loose');
-  if(ballastBonus>0)log('  ↳ success ballast: +3, fighting from behind.','good');
+  if(padjNotes.length)log('  ↳ '+padjNotes.join(', ')+'.','');
   if(dmgDrag>0)log('  ↳ damaged car dragging — lost '+dmgDrag+' this sector.','push');
 
   // The Dipper grounds out fragile cars
