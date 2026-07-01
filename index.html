@@ -1310,7 +1310,7 @@ function render(){
   const cs=getComputedStyle(document.documentElement);
   dv.style.borderColor = G.damage===0?cs.getPropertyValue('--soft'):(G.damage<6?cs.getPropertyValue('--med'):cs.getPropertyValue('--hard'));
   document.getElementById('dmgBig').textContent = G.damage===0?'No damage':'Damaged';
-  document.getElementById('dmgSmall').textContent = G.damage===0?'Bodywork clean. Risky cards and The Dipper can hurt you.':'Losing '+G.damage+' distance every sector (≈'+(G.damage*GAP_SCALE).toFixed(2)+'s) until you box and repair.';
+  document.getElementById('dmgSmall').textContent = G.damage===0?'Bodywork clean. Risky cards and The Dipper can hurt you.':'Losing '+secs(G.damage)+' every sector until you box and repair.';
   const atPit=curSector().pit && G.sec>0, pitBtn=document.getElementById('pitBtn');
   pitBtn.disabled=!atPit || G.discardMode;
   pitBtn.textContent = !atPit ? 'Box · pit straight only' : ('Box · −'+pitCost().total+(G.damage>0?' (repairs)':''));
