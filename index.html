@@ -96,6 +96,7 @@
   .event-card.type-leader{border-color:var(--push)}
   .event-card.type-surface{border-color:var(--loose)}
   .event-card.type-safety{border-color:var(--med)}
+  .event-card.type-flavor{border-color:var(--line)}
   .event-card .ec-outcome.hit{color:var(--push)}
   .event-card .ec-outcome.miss{color:var(--soft)}
   .event-card .ec-outcome.neutral{color:var(--loose)}
@@ -353,6 +354,7 @@ const RIVAL_WEAR_PIT=7;    // wear at which a rival will box if it reaches the p
 const HAND_LIMIT=5;        // if a turn's bonus draws push you over, discard down to this after your go
 // Mount Panorama, Bathurst — 6.2 km, all tarmac. Grip values reflect each corner's character:
 // low grip = tight/technical/easy to overdrive; straights carry the long flat-out sections.
+const TRACK_ID='BATHURST'; // ties this circuit's track-specific events; add new IDs as more circuits arrive
 const BATHURST=[
   {name:'Pit Straight',type:'straight',base:3,surface:'smooth',pit:true},
   {name:'Hell Corner',type:'corner',grip:5,surface:'smooth'},
@@ -369,6 +371,7 @@ const BATHURST=[
 ];
 const SPL=BATHURST.length;
 const LAP_EVENTS=[
+  // ---- LEADER: hazard chance for whoever's out front ----
   {type:'leader', name:'Light Showers', icon:'🌧', chance:0.35,
    flavor:'The sky opens right as the leader starts the lap — first through the wet, first to find the limit.',
    hit:{dmg:3,dist:4,worn:0,text:'Caught out on the greasy line — clips the barrier.'},
@@ -381,12 +384,166 @@ const LAP_EVENTS=[
    flavor:'Race control is watching this lap closely, and the leader is first under the microscope.',
    hit:{dmg:0,dist:3,worn:0,text:'Runs wide, handed a time penalty.'},
    miss:{text:'Stays inside the white lines, no drama.'}},
-  {type:'surface', name:'Gravel on Track', icon:'🪨',
+  {type:'leader', name:'Dust From the Dipper', icon:'💨', chance:0.35, track:'BATHURST',
+   flavor:'The Dipper kicks up dust as the leader crests it — a Bathurst-only blind spot.',
+   hit:{dmg:0,dist:3,worn:0,text:'Loses the apex in the dust, runs wide.'},
+   miss:{text:'Times the crest perfectly, through clean.'}},
+  {type:'leader', name:'Hopping Mad!', icon:'🦘', chance:0.4, track:'BATHURST',
+   flavor:'A kangaroo picks the worst possible moment to cross the Mountain.',
+   hit:{dmg:4,dist:0,worn:0,text:'Roo comes clean through the windscreen — bodywork wrecked.'},
+   miss:{text:'Hops clear with a foot to spare.'}},
+  {type:'leader', name:'Kerb Strike', icon:'🚧', chance:0.4,
+   flavor:'A big kerb sits right on the racing line, and the leader is first to find it.',
+   hit:{dmg:2,dist:2,worn:0,text:'Clips it hard — suspension knock.'},
+   miss:{text:'Rides the kerb perfectly, no drama.'}},
+  {type:'leader', name:'Fuel Pressure Warning', icon:'⛽', chance:0.35,
+   flavor:'A fuel pressure light flickers on right as the leader crosses the line.',
+   hit:{dmg:0,dist:3,worn:0,text:'Has to lift and short-shift through the sector.'},
+   miss:{text:'Warning clears itself — no drama.'}},
+  {type:'leader', name:'Tyre Delamination', icon:'🛞', chance:0.3,
+   flavor:'A tread starts lifting at speed right as the leader starts the lap.',
+   hit:{dmg:0,dist:0,worn:3,text:'Chunks of tread come away at speed.'},
+   miss:{text:'The tyre holds together — just.'}},
+  {type:'leader', name:'Brake Fade', icon:'🔥', chance:0.35,
+   flavor:'Brake temps spike as the leader starts the lap under load.',
+   hit:{dmg:0,dist:4,worn:0,text:'Locks up into the corner, running deep.'},
+   miss:{text:'Brakes bite exactly when needed.'}},
+  {type:'leader', name:'Full Course Yellow (Local)', icon:'🟡', chance:0.5,
+   flavor:'A local yellow flag zone catches the leader out on this lap.',
+   hit:{dmg:0,dist:2,worn:0,text:'Has to lift through the yellow zone.'},
+   miss:{text:'Clears the yellow zone at speed.'}},
+  {type:'leader', name:'Camera Car Contact', icon:'📷', chance:0.25,
+   flavor:'A trackside camera rig sits closer to the racing line than it should.',
+   hit:{dmg:2,dist:0,worn:0,text:'Clips the rig — cosmetic, but it hurts.'},
+   miss:{text:'Gives the camera crew a wide berth.'}},
+  {type:'leader', name:'Oil Down', icon:'🛢️', chance:0.3,
+   flavor:'An engine has let go up ahead and left a slick right where the leader is headed.',
+   hit:{dmg:2,dist:3,worn:1,text:'Hits the slick at speed, snaps sideways.'},
+   miss:{text:'Spots the oil flag and steers well clear.'}},
+  {type:'leader', name:'Gearbox Grumble', icon:'⚙️', chance:0.35,
+   flavor:'A gearbox starts grinding right as the leader starts the lap.',
+   hit:{dmg:0,dist:2,worn:1,text:'Misses a shift, gearbox grinds hard.'},
+   miss:{text:'Every shift lands clean.'}},
+  {type:'leader', name:'Bird Strike', icon:'🐦', chance:0.25,
+   flavor:'A bird picks the worst possible moment to cross the racing line.',
+   hit:{dmg:2,dist:0,worn:0,text:'Meets the windscreen at the worst time.'},
+   miss:{text:'Clears the canopy with room to spare.'}},
+
+  // ---- SURFACE / GRIP: reshapes the track itself ----
+  {type:'surface', name:'Gravel on Track', icon:'🪨', mode:'loose', sectorKind:'corner', count:1,
    flavor:'A truck has spread gravel across one of the corners for the rest of this lap.',
-   text:sec=>'Gravel across '+sec.name+' — tarmac cars lose grip there, Rally setups thrive.'},
-  {type:'safety', name:'Safety Car — "No Michael, no!"', icon:'🚨',
+   text:arr=>'Gravel across '+arr[0].name+' — tarmac cars lose grip there, Rally setups thrive.'},
+  {type:'surface', name:'Standing Water', icon:'💧', mode:'loose', sectorKind:'straight', count:1,
+   flavor:'Poor drainage leaves standing water across one of the straights for the rest of this lap.',
+   text:arr=>'Standing water on '+arr[0].name+' — everyone but Rally treads carefully there.'},
+  {type:'surface', name:'Sun Glare', icon:'🌞', mode:'grip', delta:-2, sectorKind:'corner', count:1,
+   flavor:'Low sun blinds drivers right at the apex of one corner for the rest of this lap.',
+   text:arr=>'Sun glare drops the grip limit through '+arr[0].name+' for the rest of the lap.'},
+  {type:'surface', name:'Fresh Tarmac Patch', icon:'🛣️', mode:'grip', delta:2, sectorKind:'corner', count:1,
+   flavor:'A freshly resurfaced patch gives extra grip through one corner for the rest of this lap.',
+   text:arr=>'Fresh tarmac through '+arr[0].name+' raises the grip limit for the rest of the lap.'},
+  {type:'surface', name:'Cold Track, Early Session Vibes', icon:'🧊', mode:'grip', delta:-1, sectorKind:'corner', scope:'lap-all',
+   flavor:'The track is still cold this lap — every corner loses a little bite.',
+   text:n=>'Grip drops by 1 through all '+n+' corners for the rest of this lap.'},
+  {type:'surface', name:'Debris Field', icon:'🧹', mode:'loose', sectorKind:'corner', count:2,
+   flavor:'A wider debris field is scattered across two corners for the rest of this lap.',
+   text:arr=>'Gravel across '+arr.map(s=>s.name).join(' and ')+' — both go loose for the rest of the lap.'},
+  {type:'surface', name:'Heavy Rain Warning', icon:'🌦️', mode:'loose', sectorKind:'any', count:3,
+   flavor:'A heavier band of rain is moving through — three sectors turn greasy for the rest of this lap.',
+   text:arr=>'Rain turns '+arr.map(s=>s.name).join(', ')+' loose for the rest of the lap.'},
+  {type:'surface', name:'Track Temp Rising', icon:'🌡️', mode:'grip', delta:-1, scope:'race-all',
+   flavor:'The tarmac is cooking under the sun — grip is only going one way from here.',
+   text:n=>'Grip drops by 1 through all '+n+' remaining corners for the rest of the race.'},
+  {type:'surface', name:'Cool Change', icon:'🌬️', mode:'grip', delta:1, scope:'race-all',
+   flavor:'A cool change rolls over the Mountain — the tarmac finds some bite again.',
+   text:n=>'Grip rises by 1 through all '+n+' remaining corners for the rest of the race.'},
+  {type:'surface', name:'Debris Clears Itself', icon:'🧼', mode:'revert',
+   flavor:'Marshals finally clear one of the gravelled corners back to a clean racing line.',
+   text:arr=>arr[0].name+' is clean again for the rest of this lap.'},
+  {type:'surface', name:'Repaved Chase', icon:'🏗️', mode:'grip', delta:2, sectorKind:'corner', namedTarget:'The Chase', track:'BATHURST',
+   flavor:'Resurfacing work at The Chase gives it extra bite for the rest of the race.',
+   text:arr=>arr[0].name+' holds extra grip for the rest of the race — the corner-speed decks feel it most.'},
+
+  // ---- FIELD-WIDE: reshapes the whole running order ----
+  {type:'safety', name:'Safety Car — "No Michael, no!"', icon:'🚨', scope:'all',
    flavor:'Yellow flags everywhere — the safety car is out and the whole field bunches up behind the leader.'},
+  {type:'safety', name:'Red Flag Restart', icon:'🔴', scope:'all', clearDamage:true,
+   flavor:'Conditions are too dangerous to continue — red flag, and the race restarts from a standing bunch.'},
+  {type:'safety', name:'Local Yellow, Podium Bunch-Up', icon:'🟨', scope:'top3',
+   flavor:'A local yellow only reaches the leading group — the podium picture resets, the rest of the field is unaffected.'},
+
+  // ---- PURE FLAVOUR: no mechanical effect, just colour ----
+  {type:'flavor', name:'Fastest Lap Bonus Point', icon:'⏱️',
+   flavor:'Someone just set the fastest lap of the race — the commentary box loses its mind.'},
+  {type:'flavor', name:'Chequered Flag Confusion', icon:'🏁',
+   flavor:'A marshal waves the chequered flag a lap early by mistake. Nobody actually stops.'},
+  {type:'flavor', name:'Commentary Box Argument', icon:'🎙️',
+   flavor:'The commentary team gets into a heated debate about tyre strategy live on air.'},
+  {type:'flavor', name:'Mountain Fog Rolls In', icon:'🌫️',
+   flavor:'Fog drifts across the top of the mountain — spectacular on the broadcast, no real effect on the racing.'},
+  {type:'flavor', name:'Local Wildlife Crossing', icon:'🐨',
+   flavor:'Something furry watches from the treeline as the field goes past. Nobody swerves this time.'},
+  {type:'flavor', name:'Marshal Waves Enthusiastically', icon:'🙌',
+   flavor:'A marshal at one corner is having an unreasonably good time out there.'},
+  {type:'flavor', name:'VB Ute Does a Lap', icon:'🚙', track:'BATHURST',
+   flavor:'Tradition demands a ute does a ceremonial lap of the Mountain. Nobody knows why. Nobody minds.'},
+  {type:'flavor', name:'Helicopter Shot', icon:'🚁',
+   flavor:'The broadcast helicopter gets a gorgeous shot of the field cresting the top of the circuit.'},
+  {type:'flavor', name:'Pie and Sauce Break', icon:'🥧', track:'BATHURST',
+   flavor:'Commentary takes a moment to discuss the merits of sauce placement on a meat pie.'},
+  {type:'flavor', name:"Someone's Horn Is Stuck in the Pits", icon:'📯',
+   flavor:'A car horn has been stuck on in the pit lane for several minutes. Nobody can find the source.'},
+
+  // ---- RANDOM: hits any single car, no bias toward position ----
+  {type:'random', name:'Fuel Flow Sensor Glitch', icon:'🔧', effect:{dist:-3},
+   flavor:'A random fuel flow sensor starts throwing false readings somewhere in the field.',
+   text:'Fuel flow glitch forces a lift.'},
+  {type:'random', name:'Perfect Racing Line Clear', icon:'✨', effect:{dist:3},
+   flavor:'One car finds the racing line completely clean and clear, for once.',
+   text:'Nails the line perfectly, no traffic at all.'},
+
+  // ---- LAST PLACE: comeback lever for whoever's at the back ----
+  {type:'last', name:'Long Green Run', icon:'🟢', effect:{dist:4},
+   flavor:'Whoever is running last catches a completely clean stretch of track.',
+   text:'Finds a long green run and makes the most of it.'},
+  {type:'last', name:'Underdog Tow', icon:'🤝', effect:{dist:2},
+   flavor:'The car at the back of the field catches a lucky tow off nobody in particular.',
+   text:'Picks up a small tow out of nowhere.'},
+  {type:'last', name:'Free Tyre Check', icon:'🔍', effect:{worn:-2},
+   flavor:'The pit wall talks the car at the back through easing off just enough to save some rubber.',
+   text:'Backs off just enough to save the tyres.'},
+
+  // ---- MOST DAMAGED: swings toward or against whoever's hurting most ----
+  {type:'mostDamaged', name:'Spare Parts Delivered', icon:'🔩', effect:{dmg:-2},
+   flavor:'A quick trackside patch-up gets doled out to whoever is carrying the most damage.',
+   text:'Gets a trackside patch-up on the bodywork.'},
+  {type:'mostDamaged', name:'Wounded Duck', icon:'🦆', effect:{dmg:2},
+   flavor:'Whoever is already carrying the most damage catches another knock in the same spot.',
+   text:'Takes another hit in the same damaged spot.'},
+
+  // ---- FACTION-TARGETED: hits an archetype, wherever it sits in the field ----
+  {type:'faction', name:'Drizzle, Not Downpour', icon:'🌦️', list:['RALLY'], effect:{dist:2},
+   flavor:'A light drizzle is just enough to wake the loose-surface setups up.'},
+  {type:'faction', name:'Debris at a Chicane', icon:'🧱', list:['F1'], effect:{dist:-2},
+   flavor:'A chicane full of debris punishes the high-downforce cars hardest.'},
+  {type:'faction', name:'Heavy Car Struggles on Cold Tyres', icon:'🥶', list:['NASCAR','V8'], effect:{dist:-2},
+   flavor:'The heavier cars are still hunting for temperature in their tyres this lap.'},
+  {type:'faction', name:'Nimble Cars Thread the Needle', icon:'🐭', list:['GT4','BTCC'], effect:{dist:2},
+   flavor:'The lighter, nimbler cars find a gap the bigger machinery could never fit through.'},
+  {type:'faction', name:'Marbles Off-Line', icon:'⚫', list:['V8','BTCC'], effect:{dist:2},
+   flavor:'Rubber marbles build up off the racing line — the contact-happy cars know exactly how to use it.'},
+  {type:'faction', name:'Push-to-Pass Zone Extended', icon:'⚡', special:'p2p',
+   flavor:'Race control extends the boost zone for this lap only.'},
+  {type:'faction', name:'Draft Train Forms', icon:'🚂', special:'draftTrain', effect:{dist:3},
+   flavor:'A proper draft train forms up on the straight, and whoever is tucked in benefits most.'},
+
+  // ---- PIT LANE: targets whoever pitted most recently ----
+  {type:'pitPenalty', name:'Pit Lane Speeding Penalty', icon:'📟', effect:{dist:-2},
+   flavor:'Race control reviews the last pit exit and finds a speeding infringement.'},
 ];
+function eventPool(){
+  return LAP_EVENTS.filter(e=>!e.track || e.track===G.trackId);
+}
 function showEventCard(typeClass,icon,title,flavor,outcomeText,tone){
   const el=document.getElementById('eventCard');
   if(!el)return;
@@ -416,36 +573,165 @@ function applyEventPenalty(isPlayer,rivalRef,dmg,dist,worn){
     if(worn)rivalRef.wear+=worn*0.6;
   }
 }
+// signed-delta version used by the newer event types (positive dist/worn = gain, negative dmg = repair)
+function mutateRanked(entry,d){
+  const dist=(d&&d.dist)||0, dmg=(d&&d.dmg)||0, worn=(d&&d.worn)||0;
+  if(entry.you){
+    if(dist)G.player=Math.max(0,G.player+dist);
+    if(dmg)G.damage=Math.max(0,G.damage+dmg);
+    if(worn){if(worn>0)makeWorn(worn);else removeWorn(-worn);}
+  } else {
+    if(dist)entry.dist=Math.max(0,entry.dist+dist);
+    if(dmg)entry.dmg=Math.max(0,entry.dmg+dmg);
+    if(worn)entry.wear=Math.max(0,entry.wear+worn*0.6);
+  }
+}
+function fmtDelta(d){
+  if(!d)return'';
+  const bits=[];
+  if(d.dist)bits.push((d.dist>0?'+':'')+d.dist+' dist');
+  if(d.dmg)bits.push((d.dmg>0?'+':'')+d.dmg+' dmg');
+  if(d.worn)bits.push((d.worn>0?'+':'')+d.worn+' worn');
+  return bits.length?' ('+bits.join(', ')+')':'';
+}
+function upcomingSectors(kind){
+  const arr=[];
+  for(let k=0;k<SPL;k++){const sec=G.track[G.sec+k];if(sec&&(kind==='any'||sec.type===kind))arr.push(sec);}
+  return arr;
+}
+function remainingRaceCorners(){
+  return G.track.slice(G.sec).filter(s=>s.type==='corner');
+}
+function announceEvent(typeClass,evt,outcomeText,tone){
+  log('<b>'+evt.icon+' LAP EVENT — '+evt.name+'</b> — '+evt.flavor,'push');
+  log('  ↳ '+outcomeText, tone==='hit'?'push':(tone==='miss'?'good':''));
+  showEventCard(typeClass,evt.icon,evt.name,evt.flavor,outcomeText,tone);
+}
 function triggerLapEvent(){
-  const evt=LAP_EVENTS[Math.random()*LAP_EVENTS.length|0];
+  const pool=eventPool();
+  const evt=pool[Math.random()*pool.length|0];
+
   if(evt.type==='safety'){
     const r=ranking();
+    const affected=evt.scope==='top3'?r.slice(0,3):r;
     const leadDist=r[0].dist;
-    r.forEach((x,i)=>{
-      const newDist=Math.max(0,leadDist-i*0.15);
-      if(x.you)G.player=newDist; else x.dist=newDist;
-    });
-    log('<b>'+evt.icon+' LAP EVENT — '+evt.name+'</b> — '+evt.flavor,'push');
-    log('  ↳ The whole field is nose-to-tail again — every gap wiped out.','push');
-    showEventCard('type-safety',evt.icon,evt.name,evt.flavor,'Every gap wiped out — the field is nose-to-tail.','safety');
+    affected.forEach((x,i)=>{const newDist=Math.max(0,leadDist-i*0.15);if(x.you)G.player=newDist;else x.dist=newDist;});
+    if(evt.clearDamage)r.forEach(x=>{if(x.you)G.damage=0;else x.dmg=0;});
+    const outcome=evt.scope==='top3'
+      ?'The podium picture bunches up — midfield and back are unaffected.'
+      :'Every gap wiped out — the field is nose-to-tail.'+(evt.clearDamage?' All damage repaired too.':'');
+    announceEvent('type-safety',evt,outcome,'safety');
     return;
   }
+
+  if(evt.type==='flavor'){
+    announceEvent('type-flavor',evt,'No mechanical effect — just colour.','neutral');
+    return;
+  }
+
   if(evt.type==='surface'){
-    // find corner sectors remaining in the lap that just started
-    const candidates=[];
-    for(let k=0;k<SPL;k++){const sec=G.track[G.sec+k];if(sec && sec.type==='corner' && sec.surface!=='loose')candidates.push(sec);}
-    if(!candidates.length)return; // nothing to change this lap (shouldn't normally happen)
-    const target=candidates[Math.random()*candidates.length|0];
-    target.surface='loose';
-    log('<b>'+evt.icon+' LAP EVENT — '+evt.name+'</b> — '+evt.flavor,'push');
-    log('  ↳ '+evt.text(target),'push');
-    showEventCard('type-surface',evt.icon,evt.name,evt.flavor,evt.text(target),'neutral');
+    if(evt.mode==='revert'){
+      const revertPool=upcomingSectors('any').filter(s=>s._eventLoose&&s.surface==='loose');
+      if(!revertPool.length)return;
+      const target=revertPool[Math.random()*revertPool.length|0];
+      target.surface='smooth';delete target._eventLoose;
+      announceEvent('type-surface',evt,evt.text([target]),'neutral');
+      return;
+    }
+    if(evt.scope==='race-all'){
+      const cands=remainingRaceCorners();
+      if(!cands.length)return;
+      cands.forEach(sec=>{sec.grip=Math.max(1,sec.grip+evt.delta);});
+      announceEvent('type-surface',evt,evt.text(cands.length),'neutral');
+      return;
+    }
+    if(evt.scope==='lap-all'){
+      const cands=upcomingSectors('corner');
+      if(!cands.length)return;
+      cands.forEach(sec=>{sec.grip=Math.max(1,sec.grip+evt.delta);});
+      announceEvent('type-surface',evt,evt.text(cands.length),'neutral');
+      return;
+    }
+    const kind=evt.sectorKind||'corner';
+    let candPool=upcomingSectors(kind).filter(s=>evt.mode!=='loose'||s.surface!=='loose');
+    if(evt.namedTarget){const named=candPool.find(s=>s.name===evt.namedTarget);candPool=named?[named]:candPool;}
+    if(!candPool.length)return;
+    const count=evt.count||1;
+    const chosen=[];const copy=[...candPool];
+    for(let i=0;i<count&&copy.length;i++){const idx=Math.random()*copy.length|0;chosen.push(copy.splice(idx,1)[0]);}
+    chosen.forEach(sec=>{
+      if(evt.mode==='loose'){sec.surface='loose';sec._eventLoose=true;}
+      else if(evt.mode==='grip'){sec.grip=Math.max(1,sec.grip+evt.delta);}
+    });
+    announceEvent('type-surface',evt,evt.text(chosen),'neutral');
     return;
   }
+
+  if(evt.type==='random'){
+    const r=ranking();const t=r[Math.random()*r.length|0];
+    mutateRanked(t,evt.effect);
+    const nm=t.you?'You':t.nm+' ('+DECKS[t.cls].name+')';
+    announceEvent('type-leader',evt,nm+' — '+evt.text+fmtDelta(evt.effect), (evt.effect.dist>0||evt.effect.dmg<0)?'miss':'hit');
+    return;
+  }
+
+  if(evt.type==='last'){
+    const r=ranking();const t=r[r.length-1];
+    mutateRanked(t,evt.effect);
+    const nm=t.you?'You':t.nm+' ('+DECKS[t.cls].name+')';
+    announceEvent('type-leader',evt,nm+' — '+evt.text+fmtDelta(evt.effect),'miss');
+    return;
+  }
+
+  if(evt.type==='mostDamaged'){
+    const r=ranking();let t=null,max=0;
+    r.forEach(x=>{const d=x.you?G.damage:x.dmg;if(d>max){max=d;t=x;}});
+    if(!t){announceEvent('type-leader',evt,'Nobody is carrying damage — the event fizzles.','neutral');return;}
+    mutateRanked(t,evt.effect);
+    const nm=t.you?'You':t.nm+' ('+DECKS[t.cls].name+')';
+    announceEvent('type-leader',evt,nm+' — '+evt.text+fmtDelta(evt.effect), evt.effect.dmg<0?'miss':'hit');
+    return;
+  }
+
+  if(evt.type==='faction'){
+    if(evt.special==='p2p'){
+      if(G.fk==='INDY'){G.p2p+=1;announceEvent('type-leader',evt,'Your Push-to-Pass bank gets +1 charge.','miss');}
+      else announceEvent('type-leader',evt,'No IndyCar in the field to take advantage.','neutral');
+      return;
+    }
+    if(evt.special==='draftTrain'){
+      const r=ranking();
+      const nascarEntries=r.filter(x=>x.cls==='NASCAR');
+      let qualifier=null;
+      for(const e of nascarEntries){const packSize=r.filter(o=>o!==e&&Math.abs(o.dist-e.dist)<=REACH).length;if(packSize>=2){qualifier=e;break;}}
+      if(!qualifier){announceEvent('type-leader',evt,'No NASCAR tucked into a pack to benefit.','neutral');return;}
+      mutateRanked(qualifier,evt.effect);
+      const nm=qualifier.you?'You':qualifier.nm+' ('+DECKS[qualifier.cls].name+')';
+      announceEvent('type-leader',evt,nm+' — tucks in and rides the tow.'+fmtDelta(evt.effect),'miss');
+      return;
+    }
+    const matches=ranking().filter(x=>evt.list.includes(x.cls));
+    if(!matches.length){announceEvent('type-leader',evt,'No '+evt.list.join('/')+' in this field to affect.','neutral');return;}
+    matches.forEach(m=>mutateRanked(m,evt.effect));
+    const names=matches.map(m=>m.you?'You':m.nm).join(', ');
+    announceEvent('type-leader',evt,names+' affected'+fmtDelta(evt.effect), (evt.effect.dist>0||evt.effect.dmg<0)?'miss':'hit');
+    return;
+  }
+
+  if(evt.type==='pitPenalty'){
+    if(!G.lastPitCls){announceEvent('type-leader',evt,'Nobody has pitted yet — no one to review.','neutral');return;}
+    const t=ranking().find(x=>x.cls===G.lastPitCls);
+    if(!t){announceEvent('type-leader',evt,'Cannot trace the last car to pit.','neutral');return;}
+    mutateRanked(t,evt.effect);
+    const nm=t.you?'You':t.nm+' ('+DECKS[t.cls].name+')';
+    announceEvent('type-leader',evt,nm+' — handed a penalty for the pit exit.'+fmtDelta(evt.effect),'hit');
+    return;
+  }
+
+  // default: 'leader' type (chance-based hit/miss on whoever is out front)
   const leader=ranking()[0];
   const isPlayer=!!leader.you;
   const nm=isPlayer?'You':leader.nm+' ('+DECKS[leader.cls].name+')';
-  log('<b>'+evt.icon+' LAP EVENT — '+evt.name+'</b> — '+evt.flavor,'push');
   const hit=Math.random()<evt.chance;
   const out=hit?evt.hit:evt.miss;
   if(hit)applyEventPenalty(isPlayer,isPlayer?null:leader,out.dmg||0,out.dist||0,out.worn||0);
@@ -453,8 +739,7 @@ function triggerLapEvent(){
   if(hit&&out.dmg)bits.push('+'+out.dmg+' dmg');
   if(hit&&out.dist)bits.push('−'+out.dist+' dist');
   if(hit&&out.worn)bits.push('+'+out.worn+' worn');
-  log('  ↳ '+nm+' — '+out.text+(bits.length?' <span class="push">('+bits.join(', ')+')</span>':''),hit?'push':'good');
-  showEventCard('type-leader',evt.icon,evt.name,evt.flavor,nm+' — '+out.text+(bits.length?' ('+bits.join(', ')+')':''),hit?'hit':'miss');
+  announceEvent('type-leader',evt,nm+' — '+out.text+(bits.length?' ('+bits.join(', ')+')':''),hit?'hit':'miss');
 }
 
 function buildTrack(){
@@ -471,7 +756,7 @@ function startRace(fk){
   const rivals=others.map(k=>{const d=DECKS[k];return {nm:d.driver,cls:k,col:d.col,dist:0,dmg:0,slow:0,wear:0,aggr:0.45+Math.random()*0.5,lastCard:'',fragile:!!d.fragile,behaviour:d.behaviour};});
   G={
     fk, fcol:f.col, deck, draw:shuffle([...deck]), hand:[], discard:[],
-    track:buildTrack(), sec:0,
+    track:buildTrack(), trackId:TRACK_ID, lastPitCls:null, sec:0,
     energy:3, maxEnergy:3, pendingEnergy:0,
     secSpeed:0, gripBonus:0, defend:false,
     powers:{versatile:false, allSurface:false, wearcut:false, ballast:false, bulletproof:false, draftfree:false}, activePowers:[],
@@ -737,6 +1022,7 @@ function moveRivals(){
     if(s.pit && G.sec>0 && (r.wear>=RIVAL_WEAR_PIT || r.dmg>=5)){
       const cost=(PITBASE[r.cls]||6)+Math.round(r.wear*0.4)+r.dmg;
       r.dist-=cost; r.wear=0; r.dmg=0;
+      G.lastPitCls=r.cls;
       r.lastCard='▪ PIT STOP (−'+cost+')';
       log(r.nm+' boxes — fresh rubber, <span class="push">−'+cost+'</span>.','push');
       return;
@@ -790,6 +1076,7 @@ function pit(){
   G.playedThisTurn+=handBefore-G.hand.length;   // fresh tyres replace any Worn purged from hand
   G.damage=0;
   G.player-=pc.total;
+  G.lastPitCls=G.fk;
   log('<b>BOX BOX</b> — '+DECKS[G.fk].name+' stop: crew '+pc.base+(pc.wearCost>0?' · tyres '+pc.wearCost:'')+(pc.dmgCost>0?' · repairs '+pc.dmgCost:'')+' = <span class="push">−'+pc.total+'</span> track position.','push');
   endSector(true);
 }
