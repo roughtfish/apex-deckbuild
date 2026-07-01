@@ -216,7 +216,7 @@
 
 const CARD={
   throttle:{name:'Throttle',cost:1,kind:'speed',text:'+2 speed.'},
-  slipstream:{name:'Slipstream',cost:1,kind:'speed',text:'+2 speed. On a straight with a rival in reach ahead: +5 (the tow). No tow in corners.'},
+  slipstream:{name:'Slipstream',cost:1,kind:'speed',text:()=>'+2 speed. On a straight with a rival within '+secs(REACH)+' ahead: +5 (the tow). No tow in corners.'},
   sendit:{name:'Send It',cost:1,kind:'speed',text:'+4 speed. Eats tyres past a corner grip limit.'},
   trailbrake:{name:'Trail Brake',cost:1,kind:'grip',text:'Grip limit +3 this corner.'},
   liftcoast:{name:'Lift & Coast',cost:0,kind:'manage',text:'Bin a Worn from hand. +1 energy.'},
@@ -236,10 +236,10 @@ const CARD={
   flatcrest:{name:'Flat Over Crest',cost:2,kind:'speed',text:'+7 speed. Make 3 Worn unless you played Pacenotes this race.'},
   allsurface:{name:'All-Surface',cost:1,kind:'power',text:'POWER: ignore loose penalty, +2 speed on every loose sector.'},
   // F1
-  overtake:{name:'Overtake Mode',cost:1,kind:'boost',text:'On a straight with a rival in reach ahead: +5 and pass. Else +2.'},
+  overtake:{name:'Overtake Mode',cost:1,kind:'boost',text:()=>'On a straight with a rival within '+secs(REACH)+' ahead: +5 and pass. Else +2.'},
   activeaero:{name:'Active Aero',cost:1,kind:'speed',text:'+5 on a straight, +1 in a corner (low-drag mode).'},
   boost:{name:'Boost Mode',cost:1,kind:'boost',text:'+4 speed, deploy anywhere.'},
-  cleanair:{name:'Clean Air',cost:1,kind:'speed',text:'+6 if no rival within reach ahead, else +1 (hates traffic).'},
+  cleanair:{name:'Clean Air',cost:1,kind:'speed',text:()=>'+6 if no rival within '+secs(REACH)+' ahead, else +1 (hates traffic).'},
   qualilap:{name:'Qualifying Lap',cost:2,kind:'speed',text:'+8 speed. Make 2 Worn. Glass cannon.'},
   autoblip:{name:'Auto-Blip',cost:1,kind:'power',text:'POWER: corners make 1 fewer Worn (paddle-shift).'},
   // V8 Supercars
@@ -254,7 +254,7 @@ const CARD={
   divebomb:{name:'Dive Bomb',cost:2,kind:'boost',text:'Corner: +6, pass a rival, make 2 Worn.'},
   ballast:{name:'Success Ballast',cost:0,kind:'power',text:'POWER: +3 each sector while NOT leading; nothing while you lead.'},
   // NASCAR
-  bumpdraft:{name:'Bump Draft',cost:1,kind:'boost',text:'On a straight with a rival in reach ahead: +4 and draw. Else +2.'},
+  bumpdraft:{name:'Bump Draft',cost:1,kind:'boost',text:()=>'On a straight with a rival within '+secs(REACH)+' ahead: +4 and draw. Else +2.'},
   sidedraft:{name:'Side-Draft',cost:1,kind:'speed',text:()=>'Straight + rival ahead: +4 and cost them ~'+secs(SIDE_PEN)+' of pace next sector. Else +2.'},
   highline:{name:'Run the High Line',cost:1,kind:'grip',text:'Corner: +5, no wear. Straight: +3.'},
   packracing:{name:'Pack Racing',cost:1,kind:'speed',text:'+2 speed for each rival within reach.'},
@@ -645,7 +645,7 @@ function render(){
   if(s.surface==='loose'){ss.classList.remove('hide');ss.textContent='loose';}else ss.classList.add('hide');
   document.getElementById('secDesc').textContent = s.surface==='loose'
     ? 'Loose surface — circuit cars lose grip here. Rally setups thrive.'
-    : (s.type==='corner'?'Bank speed up to the grip limit. Every point over makes a Worn Tyre.':'No grip limit. Slipstream pays if a rival is just ahead.');
+    : (s.type==='corner'?'Bank speed up to the grip limit. Every point over makes a Worn Tyre.':'No grip limit. Slipstream pays if a rival is within '+secs(REACH)+' ahead.');
   const limit=(s.type==='corner')?s.grip+G.gripBonus:null;
   document.getElementById('gSpeed').textContent=G.secSpeed;
   document.getElementById('gLimit').textContent=limit===null?'—':limit;
