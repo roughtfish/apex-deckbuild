@@ -535,40 +535,41 @@ function endSector(coastThrough=false){
   render();
 }
 
-function rivalCard(r,s){
+function rivalCard(r,s,push){
   const straight=s.type==='straight', corner=s.type==='corner';
   const near=[...G.rivals,{dist:G.player}].some(o=>o!==r&&Math.abs(o.dist-r.dist)<=REACH);
   const behind=r.dist<G.player;
+  const pushing=push>=0.72;   // true if this sector's pace roll was an aggressive one
   const pick=a=>a[Math.random()*a.length|0];
   if(r.wear>=RIVAL_WEAR_PIT) return pick(['managing the tyres','tyres going off','conserving']);
   switch(r.behaviour){
     case 'f1':
       if(r.dmg>0) return pick(['nursing the damage','Fuel Save','holding station']);
-      if(straight) return pick(['Overtake Mode','Boost Mode','Active Aero']);
-      return pick(['Trail Brake','High Downforce','Clean Air']);
+      if(straight) return pushing?pick(['Overtake Mode','Boost Mode']):'Active Aero';
+      return pushing?'Clean Air':pick(['Trail Brake','High Downforce']);
     case 'nascar':
-      if(straight&&near) return pick(['Bump Draft','Side-Draft','Slingshot']);
-      if(corner) return pick(['Run the High Line','Trail Brake']);
-      return pick(['Pack Racing','Draft Discipline']);
+      if(straight&&near&&pushing) return pick(['Bump Draft','Side-Draft','Slingshot']);
+      if(corner) return pushing?'Run the High Line':'Trail Brake';
+      return pushing?'Pack Racing':'Draft Discipline';
     case 'v8':
-      if(corner) return pick(['Heel & Toe','Mountain Master','Trail Brake']);
-      if(near) return pick(['Lean On Them','Slipstream']);
-      return pick(['Enduro Stint','Conserve']);
+      if(corner) return pushing?pick(['Heel & Toe','Mountain Master']):'Trail Brake';
+      if(near&&pushing) return pick(['Lean On Them','Slipstream']);
+      return pushing?'Enduro Stint':'Conserve';
     case 'btcc':
-      if(near) return pick(['Three Wide','Lean On Them','Switchback']);
-      if(behind) return pick(['Success Ballast','Dive Bomb']);
-      return pick(['Heel & Toe','Throttle']);
+      if(near&&pushing) return pick(['Three Wide','Lean On Them','Switchback']);
+      if(behind&&pushing) return pick(['Success Ballast','Dive Bomb']);
+      return pushing?'Heel & Toe':'Throttle';
     case 'indy':
-      if(straight) return pick(['Push-to-Pass','Overtake Mode','Hybrid Deploy']);
-      if(corner) return pick(['Trail Brake','Versatile Setup']);
-      return pick(['Fuel Number','Restart Master']);
+      if(straight) return pushing?pick(['Push-to-Pass','Overtake Mode','Hybrid Deploy']):'Fuel Number';
+      if(corner) return pushing?'Trail Brake':'Versatile Setup';
+      return pushing?'Restart Master':'Fuel Number';
     case 'rally':
-      if(corner) return pick(['Handbrake Turn','Flick — wrong surface!']);
-      if(straight) return pick(['Flat Over Crest','Anti-Lag']);
-      return pick(['Pacenotes','fighting the tarmac']);
+      if(corner) return pushing?'Handbrake Turn':pick(['Flick — wrong surface!','Pacenotes']);
+      if(straight) return pushing?'Flat Over Crest':'Anti-Lag';
+      return pushing?'Pacenotes':'fighting the tarmac';
     case 'gt4':
-      if(corner) return pick(['Trail Brake','Tyre Whisperer']);
-      return pick(['Stint Pace','Conserve','Slipstream']);
+      if(corner) return pushing?'Trail Brake':'Tyre Whisperer';
+      return pushing?'Stint Pace':pick(['Conserve','Slipstream']);
   }
   return 'Throttle';
 }
@@ -585,7 +586,10 @@ function moveRivals(){
       log(r.nm+' boxes — fresh rubber, <span class="push">−'+cost+'</span>.','push');
       return;
     }
-    r.lastCard=rivalCard(r,s);
+    // personality: push harder when chasing (costs tyres), ease off when leading
+    const behind=r.dist<leadDist-1;
+    const push=r.aggr+(behind?0.12:0);          // ~0.45..1.07
+    const cardName=rivalCard(r,s,push);
     // base pace by category behaviour
     let pace=5+Math.random()*1.5;
     switch(r.behaviour){
@@ -597,19 +601,18 @@ function moveRivals(){
       case 'rally': pace=(s.surface==='loose'?7:4)+Math.random()*1.2; break;
       case 'gt4': pace=5+progress*1+Math.random()*1.2; break;
     }
-    // personality: push harder when chasing (costs tyres), ease off when leading
-    const behind=r.dist<leadDist-1;
-    const push=r.aggr+(behind?0.12:0);          // ~0.45..1.07
     pace*=0.98+push*0.2;
     // surface handicap + taxes
     if(s.surface==='loose' && r.behaviour!=='rally')pace-=2;
     pace-=r.wear*WEARTAX;
     pace-=r.dmg*0.5;
     if(r.slow>0){pace-=r.slow;log(r.nm+' held up — <span class="push">−'+secs(r.slow)+'</span> this sector.','push');r.slow=0;}
+    pace=Math.max(0,pace);
     // tyre wear accrues — more when pushing, more through corners
     r.wear+=0.35+push*0.4+(corner?0.5:0);
+    r.lastCard=cardName+' <span style="color:var(--good)">(+'+pace.toFixed(1)+')</span>';
     const before=r.dist;
-    r.dist+=Math.max(0,pace);
+    r.dist+=pace;
     if(G.defend && r.dist>G.player && before<G.player)r.dist=G.player-0.1;
   });
   log('<span style="color:var(--muted)">▸ '+G.rivals.map(r=>r.nm+' '+r.lastCard).join(' · ')+'</span>','');
