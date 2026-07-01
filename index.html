@@ -312,6 +312,15 @@ const CARD={
   undercut:{name:'Undercut',cost:1,kind:'manage',text:'Scrub up to 3 Worn from your deck. +2 speed.'},
 };
 
+const DRIVER_NAMES={
+  F1:['VERSTRAPP','HAMILFORD','LECLAIRE','NORROW','ALONZO'],
+  V8:['VANGIS','WHINCASH','MCLOUGHNEY','COURTLAND','RANDA'],
+  BTCC:['SUTTON','SHEDDON','TURKINGTON','PLATA','JORDAINE'],
+  NASCAR:['EARNHART','LOGANOR','BLANEYS','HAMLYN','BUSCHELL'],
+  INDY:['DIXENT','PALMOU','HERTA-K','ROSSIGNOL','ERICSSEN'],
+  RALLY:['LOEBEL','OGGIVIE','ROVANPER','TANAKAMI','EVANSTON'],
+  GT4:['BARNESLEY','VANTHOOR','MARCIELLO','ROSSINI','ENGELHART'],
+};
 const DECKS={
   F1:{name:'F1',col:'var(--f1)',tag:'raw pace · fragile',fragile:true,driver:'VERSTRAPP',behaviour:'f1',
     blurb:'Blistering top-end speed that punishes mistakes and hates traffic — and grounds out over The Dipper. Fast, brittle, unforgiving.',
@@ -891,7 +900,7 @@ function startRace(fk){
   const f=DECKS[fk];
   const deck=f.cards.map((k,i)=>({key:k,...CARD[k],uid:i+'_'+k}));
   const others=shuffle(Object.keys(DECKS).filter(k=>k!==fk));
-  const rivals=others.map(k=>{const d=DECKS[k];return {nm:d.driver,cls:k,col:d.col,dist:0,dmg:0,slow:0,wear:0,aggr:0.45+Math.random()*0.5,lastCard:'',fragile:!!d.fragile,behaviour:d.behaviour,justPitted:false};});
+  const rivals=others.map(k=>{const d=DECKS[k];const pool=DRIVER_NAMES[k];const nm=pool?pool[Math.random()*pool.length|0]:d.driver;return {nm,cls:k,col:d.col,dist:0,dmg:0,slow:0,wear:0,aggr:0.45+Math.random()*0.5,lastCard:'',fragile:!!d.fragile,behaviour:d.behaviour,justPitted:false};});
   G={
     fk, fcol:f.col, deck, draw:shuffle([...deck]), hand:[], discard:[],
     track:buildTrack(), trackId:TRACK_ID, lastPitCls:null, eventKeepUntilSec:null, eventHighlight:null, playerJustPitted:false,
