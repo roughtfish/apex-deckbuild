@@ -245,7 +245,7 @@ const CARD={
   // V8 Supercars
   heeltoe:{name:'Heel & Toe',cost:1,kind:'grip',text:'Corner: +3, no wear — but +0 if you hold a Worn (missed shift).'},
   mountainmaster:{name:'Mountain Master',cost:1,kind:'speed',text:'+3 speed, +3 more in a corner.'},
-  leanon:{name:'Lean On Them',cost:1,kind:'boost',text:'Pass a rival ahead and cost them ~1.4s of pace next sector. Make 1 Worn.'},
+  leanon:{name:'Lean On Them',cost:1,kind:'boost',text:()=>'Pass a rival ahead and cost them ~'+secs(LEAN_PEN)+' of pace next sector. Make 1 Worn.'},
   conserve:{name:'Conserve',cost:1,kind:'manage',text:'Scrub 2 Worn from your deck. +3 speed.'},
   enduro:{name:'Enduro Stint',cost:1,kind:'speed',text:'+2 speed for each Worn in your discard.'},
   // BTCC
@@ -255,7 +255,7 @@ const CARD={
   ballast:{name:'Success Ballast',cost:0,kind:'power',text:'POWER: +3 each sector while NOT leading; nothing while you lead.'},
   // NASCAR
   bumpdraft:{name:'Bump Draft',cost:1,kind:'boost',text:'On a straight with a rival in reach ahead: +4 and draw. Else +2.'},
-  sidedraft:{name:'Side-Draft',cost:1,kind:'speed',text:'Straight + rival ahead: +4 and cost them ~1.0s of pace next sector. Else +2.'},
+  sidedraft:{name:'Side-Draft',cost:1,kind:'speed',text:()=>'Straight + rival ahead: +4 and cost them ~'+secs(SIDE_PEN)+' of pace next sector. Else +2.'},
   highline:{name:'Run the High Line',cost:1,kind:'grip',text:'Corner: +5, no wear. Straight: +3.'},
   packracing:{name:'Pack Racing',cost:1,kind:'speed',text:'+2 speed for each rival within reach.'},
   slingshot:{name:'Slingshot',cost:2,kind:'boost',text:'If 2nd or 3rd: +7 and pass. Else +3.'},
@@ -298,6 +298,8 @@ const DECKS={
 const LAPS=2;
 const GAP_SCALE=0.35; // converts abstract distance units into seconds of interval
 const REACH=6;        // "in reach ahead": a rival this many distance-units ahead or closer (~2.1s on the tower)
+const LEAN_PEN=4;     // Lean On Them: pace a disrupted rival loses next sector (distance units)
+const SIDE_PEN=3;     // Side-Draft: pace a disrupted rival loses next sector (distance units)
 // Mount Panorama, Bathurst — 6.2 km, all tarmac. Grip values reflect each corner's character:
 // low grip = tight/technical/easy to overdrive; straights carry the long flat-out sections.
 const BATHURST=[
@@ -326,7 +328,7 @@ function startRace(fk){
   const f=DECKS[fk];
   const deck=f.cards.map((k,i)=>({key:k,...CARD[k],uid:i+'_'+k}));
   const others=shuffle(Object.keys(DECKS).filter(k=>k!==fk)).slice(0,3);
-  const rivals=others.map(k=>{const d=DECKS[k];return {nm:d.driver,cls:k,col:d.col,dist:0,dmg:0,slow:0,fragile:!!d.fragile,behaviour:d.behaviour};});
+  const rivals=others.map(k=>{const d=DECKS[k];return {nm:d.driver,cls:k,col:d.col,dist:0,dmg:0,slow:0,lastCard:'',fragile:!!d.fragile,behaviour:d.behaviour};});
   G={
     fk, fcol:f.col, deck, draw:shuffle([...deck]), hand:[], discard:[],
     track:buildTrack(), sec:0,
@@ -438,7 +440,7 @@ function playCard(uid){
     // V8 Supercars
     case 'heeltoe':{const hw=G.hand.some(x=>x.worn);if(corner&&!hw){G.secSpeed+=3;G.gripBonus+=3;log('Heel & toe — rev-matched, clean → +3, no wear.','good');}else if(corner){log('Heel & toe — fumbled on worn tyres → +0.','push');}else{G.secSpeed+=2;log('Heel & toe (no corner) → +2.','');}break;}
     case 'mountainmaster':{const b=3+(corner?3:0);G.secSpeed+=b;log('Mountain Master → +'+b+'.',corner?'good':'');break;}
-    case 'leanon':{const t=nearestAhead();if(t){const pen=4;t.slow+=pen;passNearestAhead();makeWorn(1);log('Leaned on '+t.nm+' — bullied past, <span class="good">−'+secs(pen)+' to their pace next sector</span>. <span class="push">1× Worn</span>.','good');}else log('Lean on them — nobody ahead to lean on.','');break;}
+    case 'leanon':{const t=nearestAhead();if(t){const pen=LEAN_PEN;t.slow+=pen;passNearestAhead();makeWorn(1);log('Leaned on '+t.nm+' — bullied past, <span class="good">−'+secs(pen)+' to their pace next sector</span>. <span class="push">1× Worn</span>.','good');}else log('Lean on them — nobody ahead to lean on.','');break;}
     case 'conserve':{const c2=removeWorn(2);G.secSpeed+=3;log('Conserve — scrubbed '+c2+' Worn, +3.','good');break;}
     case 'enduro': case 'stintpace':{const w=[...G.draw,...G.discard].filter(x=>x.worn).length;G.secSpeed+=2*w;log(c.name+' → +'+(2*w)+' ('+w+' Worn working for you).',w>0?'good':'');break;}
     // BTCC
@@ -448,7 +450,7 @@ function playCard(uid){
     case 'ballast': G.powers.ballast=true; pushPower('Success Ballast'); log('POWER: Success Ballast — you fight harder from behind.','good'); toDiscard=false; break;
     // NASCAR
     case 'bumpdraft':{if(rivalAhead()&&s.type==='straight'){G.secSpeed+=4;drawOne();log('Bump draft → +4 and drew a card.','good');}else{G.secSpeed+=2;log('Bump draft → +2'+(rivalAhead()?' (no push — mid-corner)':'')+'.','');}break;}
-    case 'sidedraft':{if(!corner&&rivalAhead()){G.secSpeed+=4;const t=nearestAhead();const pen=3;if(t)t.slow+=pen;log('Side-draft → +4, took the air off '+(t?t.nm:'them')+' — <span class="good">−'+secs(pen)+' to their pace next sector</span>.','good');}else{G.secSpeed+=2;log('Side-draft → +2.','');}break;}
+    case 'sidedraft':{if(!corner&&rivalAhead()){G.secSpeed+=4;const t=nearestAhead();const pen=SIDE_PEN;if(t)t.slow+=pen;log('Side-draft → +4, took the air off '+(t?t.nm:'them')+' — <span class="good">−'+secs(pen)+' to their pace next sector</span>.','good');}else{G.secSpeed+=2;log('Side-draft → +2.','');}break;}
     case 'highline':{if(corner){G.secSpeed+=5;G.gripBonus+=5;log('High line → +5, no wear.','good');}else{G.secSpeed+=3;log('High line → +3.','');}break;}
     case 'packracing':{const n=rivalsReachCount();G.secSpeed+=2*n;log('Pack racing → +'+(2*n)+' ('+n+' in reach).',n>0?'good':'');break;}
     case 'slingshot':{const p=myPosition();if(p===2||p===3){G.secSpeed+=7;log('Slingshot → +7!','good');passNearestAhead();}else{G.secSpeed+=3;log('Slingshot → +3 (out of position).','');}break;}
@@ -511,10 +513,47 @@ function endSector(coastThrough=false){
   render();
 }
 
+function rivalCard(r,s){
+  const straight=s.type==='straight', corner=s.type==='corner';
+  const near=[...G.rivals,{dist:G.player}].some(o=>o!==r&&Math.abs(o.dist-r.dist)<=REACH);
+  const behind=r.dist<G.player;
+  const pick=a=>a[Math.random()*a.length|0];
+  switch(r.behaviour){
+    case 'f1':
+      if(r.dmg>0) return pick(['nursing the damage','Fuel Save','holding station']);
+      if(straight) return pick(['Overtake Mode','Boost Mode','Active Aero']);
+      return pick(['Trail Brake','High Downforce','Clean Air']);
+    case 'nascar':
+      if(straight&&near) return pick(['Bump Draft','Side-Draft','Slingshot']);
+      if(corner) return pick(['Run the High Line','Trail Brake']);
+      return pick(['Pack Racing','Draft Discipline']);
+    case 'v8':
+      if(corner) return pick(['Heel & Toe','Mountain Master','Trail Brake']);
+      if(near) return pick(['Lean On Them','Slipstream']);
+      return pick(['Enduro Stint','Conserve']);
+    case 'btcc':
+      if(near) return pick(['Three Wide','Lean On Them','Switchback']);
+      if(behind) return pick(['Success Ballast','Dive Bomb']);
+      return pick(['Heel & Toe','Throttle']);
+    case 'indy':
+      if(straight) return pick(['Push-to-Pass','Overtake Mode','Hybrid Deploy']);
+      if(corner) return pick(['Trail Brake','Versatile Setup']);
+      return pick(['Fuel Number','Restart Master']);
+    case 'rally':
+      if(corner) return pick(['Handbrake Turn','Flick — wrong surface!']);
+      if(straight) return pick(['Flat Over Crest','Anti-Lag']);
+      return pick(['Pacenotes','fighting the tarmac']);
+    case 'gt4':
+      if(corner) return pick(['Trail Brake','Tyre Whisperer']);
+      return pick(['Stint Pace','Conserve','Slipstream']);
+  }
+  return 'Throttle';
+}
 function moveRivals(){
   const progress=G.sec/G.track.length;
   const s=curSector();const corner=s.type==='corner',straight=s.type==='straight';
   G.rivals.forEach(r=>{
+    r.lastCard=rivalCard(r,s);
     let pace=5+Math.random()*1.5;
     switch(r.behaviour){
       case 'f1': pace=8-progress*5+Math.random()*1.5; break;
@@ -532,6 +571,7 @@ function moveRivals(){
     r.dist+=Math.max(0,pace);
     if(G.defend && r.dist>G.player && before<G.player)r.dist=G.player-0.1;
   });
+  log('<span style="color:var(--muted)">▸ '+G.rivals.map(r=>r.nm+' '+r.lastCard).join(' · ')+'</span>','');
 }
 
 function pit(){
@@ -577,7 +617,7 @@ function render(){
       <div class="pos" style="color:${i===0?'var(--text)':'var(--muted)'}">${i+1}</div>
       <div class="chip" style="background:${x.col}"></div>
       <div class="nm">${x.nm}${x.dmg>0?' <span style="color:var(--push)">⚠</span>':''}${x.slow>0?' <span style="color:var(--med)">▼'+secs(x.slow)+'</span>':''}<div class="cls">${x.cls}${x.dmg>0?' · dmg '+x.dmg:''}${x.slow>0?' · held up':''}</div>
-        <div class="bar"><i style="width:${Math.max(3,x.dist/max*100)}%;background:${x.col}"></i></div></div>
+        <div class="bar"><i style="width:${Math.max(3,x.dist/max*100)}%;background:${x.col}"></i></div>${x.lastCard?'<div style="font-size:9px;color:var(--muted);margin-top:3px">▸ '+x.lastCard+'</div>':''}</div>
       <div class="dist mono"${x.you?' style="color:'+x.col+'"':''}>${gap}</div>
     </div>`;}).join('');
 
@@ -649,7 +689,7 @@ function render(){
       <div class="cost">${c.cost}</div>
       <div class="ico">${ico}${noCharge?' · 0 left':''}</div>
       <div class="cn">${c.name}</div>
-      <div class="ct">${c.text}</div>
+      <div class="ct">${typeof c.text==='function'?c.text():c.text}</div>
     </div>`;
   }).join('');
 
